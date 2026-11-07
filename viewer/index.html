@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Owl · Spine 官方渲染器</title>
+<link rel="stylesheet" href="node_modules/@esotericsoftware/spine-player/dist/spine-player.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #1e1e22; color: #ddd;
+               font: 13px/1.5 system-ui, sans-serif; }
+  #player { position: absolute; inset: 0; }
+  .bar { position: absolute; z-index: 10; top: 10px; left: 10px;
+         background: rgba(0,0,0,.55); padding: 8px 12px; border-radius: 6px; }
+  .bar button { background: #333; color: #ddd; border: 1px solid #555;
+                border-radius: 4px; padding: 4px 9px; margin-right: 5px;
+                cursor: pointer; font: inherit; }
+  .bar button:hover { background: #444; }
+  .bar button.on { background: #2d6; color: #111; border-color: #2d6; }
+</style>
+</head>
+<body>
+<div id="player"></div>
+<div class="bar">
+  <button data-anim="idle" class="on">idle</button>
+  <button data-anim="blink">blink</button>
+  <button data-anim="left">left</button>
+  <button data-anim="right">right</button>
+  <button data-anim="up">up</button>
+  <button data-anim="down">down</button>
+  <button id="bg">背景</button>
+</div>
+
+<script src="node_modules/@esotericsoftware/spine-player/dist/iife/spine-player.js"></script>
+<script>
+// 官方 runtime 直接解析 export/owl-pro.json + owl.atlas。
+// 这是基准真值：Spine 编辑器怎么画，这里就怎么画。
+const player = new spine.SpinePlayer("player", {
+  // spine-player 4.3 renamed the entry points: `skeleton` replaces `jsonUrl`,
+  // `atlas` replaces `atlasUrl`. Passing the old names throws
+  // "A URL must be specified for the skeleton JSON or binary file."
+  skeleton: "../examples/owl/export/owl-pro.json",
+  atlas: "../examples/owl/export/owl.atlas",
+  animation: "idle",
+  skin: "default",
+  showControls: false,  backgroundColor: "#1e1e22",
+  alpha: true,
+  premultipliedAlpha: false,
+  viewport: { debugRender: false },
+  success: (p) => {
+    console.log("loaded:", p.skeleton?.data?.name,
+                "animations:", Object.keys(p.skeleton?.data?.animations || {}));
+  },
+  error: (p, msg) => {
+    console.error("load failed:", msg);
+    document.body.insertAdjacentHTML("beforeend",
+      '<pre style="position:absolute;top:60px;left:10px;color:#f66;background:#000;padding:10px;z-index:20">'
+      + msg + '</pre>');
+  }
+});
+
+document.querySelectorAll("[data-anim]").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("[data-anim]").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    player.setAnimation(btn.dataset.anim);
+  };
+});
+
+let light = true;
+document.getElementById("bg").onclick = () => {
+  light = !light;
+  player.setBackgroundColor(light ? "#ffffff" : "#1e1e22");
+};
+</script>
+</body>
+</html>

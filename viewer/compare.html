@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>owl-pro vs owl-reskin</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #14161c; overflow: hidden; }
+  body { display: flex; }
+  .pane { flex: 1; position: relative; min-width: 0; }
+  .pane + .pane { border-left: 1px solid #2c3040; }
+  .pane > div { position: absolute; inset: 0; }
+  .tag {
+    position: absolute; top: 12px; left: 12px; z-index: 5;
+    font: 12px/1 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: #c8cddb; background: rgba(0,0,0,.55);
+    padding: 6px 10px; border-radius: 5px;
+  }
+  .tag b { color: #4a9eff; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="pane">
+    <span class="tag"><b>原版</b> · owl-pro（猫头鹰）</span>
+    <div id="left"></div>
+  </div>
+  <div class="pane">
+    <span class="tag"><b>换皮后</b> · owl-reskin（鸽子头）</span>
+    <div id="right"></div>
+  </div>
+
+<script src="node_modules/@esotericsoftware/spine-player/dist/iife/spine-player.js"></script>
+<script>
+const COMMON = {
+  animation: "idle",
+  showControls: false,
+  backgroundColor: "#14161c",
+  alpha: true,
+  premultipliedAlpha: true,
+  // Fixed framing on both sides so the comparison shows size, not framing.
+  viewport: { debugRender: false, yDown: false, padLeft: "40%", padRight: "40%", padTop: "20%", padBottom: "20%" },
+};
+
+new spine.SpinePlayer("left", Object.assign({}, COMMON, {
+  skeleton: "../examples/owl/export/owl-pro.json",
+  atlas: "../examples/owl/export/owl.atlas",
+}));
+
+new spine.SpinePlayer("right", Object.assign({}, COMMON, {
+  skeleton: "../examples/owl/reskinned/owl-reskin.json",
+  atlas: "../examples/owl/reskinned/owl-reskin.atlas",
+}));
+</script>
+</body>
+</html>

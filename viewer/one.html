@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>single</title>
+<style>html,body{margin:0;height:100%;background:#14161c}
+#p{position:absolute;inset:0}
+#errbox{position:absolute;bottom:8px;left:8px;color:#f88;background:#000a;padding:6px;font:11px monospace;max-width:90%}
+</style>
+</head>
+<body>
+<div id="p"></div>
+<div id="errbox"></div>
+<script src="node_modules/@esotericsoftware/spine-player/dist/iife/spine-player.js"></script>
+<script>
+const qs = new URLSearchParams(location.search);
+window.__ok = [];
+new spine.SpinePlayer("p", {
+  skeleton: qs.get("skeleton") || "../examples/owl/export/owl-pro.json",
+  atlas: qs.get("atlas") || "../examples/owl/export/owl.atlas",
+  animation: "idle",
+  showControls: false,
+  backgroundColor: "#14161c",
+  alpha: true,
+  success: (p) => { window.__ok.push(p); },
+  error: (p, m) => {
+    document.getElementById("errbox").textContent = m;
+  }
+});
+</script>
+</body>
+</html>

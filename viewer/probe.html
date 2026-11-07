@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>验证：运行时替换贴图</title>
+<style>
+  html,body{margin:0;height:100%;background:#12141a;color:#ddd;font:13px/1.6 system-ui,sans-serif}
+  #layout{display:flex;height:100%}
+  #player{flex:1;position:relative}
+  #log{width:420px;background:#0b0d11;border-left:1px solid #2a2f3a;padding:14px;overflow:auto;white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace}
+  .ok{color:#4dd}:.err{color:#f66}
+  button{background:#242a34;color:#dfe4ee;border:1px solid #3a4250;border-radius:5px;padding:6px 12px;margin:3px 4px 3px 0;cursor:pointer;font:inherit}
+  button:hover{background:#2e3542}
+</style>
+</head>
+<body>
+<div id="layout">
+  <div id="player"></div>
+  <div id="log"></div>
+</div>
+<script src="node_modules/@esotericsoftware/spine-player/dist/iife/spine-player.js"></script>
+<script>
+const logEl = document.getElementById("log");
+function log(msg, cls = "") {
+  const line = document.createElement("div");
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+}
+
+const player = new spine.SpinePlayer("player", {
+  skeleton: "../examples/owl/export/owl-pro.json",
+  atlas: "../examples/owl/export/owl.atlas",
+  animation: "idle",
+  showControls: false,
+  backgroundColor: "#12141a",
+  success: (p) => { log("player ready", "ok"); setTimeout(check, 400); },
+  error: (p, msg) => log("LOAD FAIL: " + msg, "err")
+});
+
+function makeTintTexture(w, h, cssColor) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = cssColor;
+  ctx.fillRect(0, 0, w, h);
+  return new spine.GLTexture(c);
+}
+
+function check() {
+  // Player 实例上实际能拿到什么
+  log("player keys: " + Object.keys(player).join(", "));
+  const sk = player.skeleton;
+  log("skeleton: " + (sk ? "yes" : "NO"));
+  if (!sk) return;
+
+  const atlas = sk.data?.atlas || player.atlas;
+  log("atlas: " + (atlas ? "yes" : "NO"));
+  if (!atlas) { log("cannot reach atlas", "err"); return; }
+
+  log("atlas pages: " + atlas.pages.length);
+  const page = atlas.pages[0];
+  log("page name: " + page.name + "  " + page.width + "x" + page.height);
+  log("page texture: " + (page.texture ? page.texture.constructor.name : "null"));
+  log("regions on page: " + page.regions.length);
+
+  const region = atlas.findRegion("head-base");
+  log("findRegion(head-base): " + (region ? region.name : "NULL"));
+  if (region) {
+    log("  uv: " + region.u.toFixed(3)+","+region.v.toFixed(3)+" - "+
+        region.u2.toFixed(3)+","+region.v2.toFixed(3));
+    log("  size: " + region.width + "x" + region.height +
+        "  original: " + region.originalWidth + "x" + region.originalHeight);
+    log("  degrees: " + region.degrees);
+  }
+  log("\n--- probe API ---");
+  log("GLTexture: " + typeof spine.GLTexture);
+  log("page.gl?: " + (page.texture?.gl !== undefined));
+  log("texture ctor: " + (page.texture?.constructor?.name || "none"));
+}
+
+// 实验：整页换纹理
+function swapPage() {
+  const atlas = player.skeleton.data.atlas;
+  const page = atlas.pages[0];
+  log("\n[swap] page " + page.width + "x" + page.height);
+  try {
+    const tex = makeTintTexture(page.width, page.height, "#ff3366");
+    page.setTexture(tex);
+    player.skeleton.setToSetupPose();
+    log("page.setTexture() OK — 整页变粉红说明运行时替换生效", "ok");
+  } catch (e) {
+    log("page.setTexture FAILED: " + e.message, "err");
+  }
+}
+
+// 实验：只改一个 region 的 UV 到一个纯色小区域
+function swapRegion() {
+  const atlas = player.skeleton.data.atlas;
+  const region = atlas.findRegion("head-base");
+  const page = atlas.pages[0];
+  log("\n[region] head-base before: u=" + region.u.toFixed(3) +
+      " w=" + region.width + "x" + region.height);
+  try {
+    // 把这张图集的左上角 64x64 区域映射给 head-base
+    const W = page.width, H = page.height;
+    region.u  = 0;          region.v  = 0;
+    region.u2 = 64 / W;     region.v2 = 64 / H;
+    log("region uv rewritten -> 应显示图集左上角 64x64 的内容", "ok");
+  } catch (e) {
+    log("region rewrite FAILED: " + e.message, "err");
+  }
+}
+
+// 实验：换附件（不影响其他部件）
+function reloadSkin() {
+  const sk = player.skeleton;
+  const slot = sk.findSlot("head-base");
+  log("\n[slot] head-base attachment: " + (slot.getAttachment()?.constructor?.name || "null"));
+}
+</script>
+</body>
+</html>

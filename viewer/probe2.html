@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>验证 2：附件 → region → texture 通路</title>
+<style>
+  html,body{margin:0;height:100%;background:#12141a;color:#ddd;font:13px/1.6 system-ui,sans-serif}
+  #layout{display:flex;height:100%}
+  #player{flex:1;position:relative}
+  #log{width:460px;background:#0b0d11;border-left:1px solid #2a2f3a;padding:14px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,monospace}
+  .ok{color:#4dd}.err{color:#f66}.hi{color:#fd6}
+</style>
+</head>
+<body>
+<div id="layout">
+  <div id="player"></div>
+  <div id="log"></div>
+</div>
+<script src="node_modules/@esotericsoftware/spine-player/dist/iife/spine-player.js"></script>
+<script>
+const logEl = document.getElementById("log");
+const log = (m, c="") => {
+  const d = document.createElement("div");
+  if (c) d.className = c;
+  d.textContent = m;
+  logEl.appendChild(d);
+};
+
+const player = new spine.SpinePlayer("player", {
+  skeleton: "../examples/owl/export/owl-pro.json",
+  atlas: "../examples/owl/export/owl.atlas",
+  animation: "idle",
+  showControls: false,
+  backgroundColor: "#12141a",
+  success: () => setTimeout(probe, 500),
+  error: (p, m) => log("LOAD FAIL: " + m, "err")
+});
+
+function probe() {
+  const sk = player.skeleton;
+  if (!sk) return log("no skeleton", "err");
+  const data = sk.data;
+
+  log("=== 1. SkeletonData 上直接找 atlas ===");
+  for (const k of Object.keys(data)) {
+    const v = data[k];
+    if (v && (v.constructor?.name || "").includes("Atlas")) log("  FOUND data." + k, "ok");
+  }
+  log("  data.atlas = " + (data.atlas ? "yes" : "null"));
+  log("  player.assetManager = " + (player.assetManager ? "yes" : "null"));
+
+  log("\n=== 2. 从附件拿到 Sequence → region ===");
+  const slot = sk.findSlot("leaf-1");
+  log("  slot leaf-1: " + (slot ? "found" : "NULL"));
+  // 4.3 的 Slot 不直接暴露 getAttachment()，当前附件在 slot.pose.attachment 上。
+  const att = slot?.pose?.attachment ?? null;
+  log("  attachment type: " + (att?.constructor?.name || "null"));
+  log("  attachment keys: " + (att ? Object.keys(att).join(", ") : "-"));
+
+  if (att?.sequence) {
+    const seq = att.sequence;
+    log("  sequence.regions.length = " + seq.regions.length);
+    const reg = seq.regions[0];
+    if (reg) {
+      log("  region.name = " + reg.name);
+      log("  region uv = " + reg.u.toFixed(4) + "," + reg.v.toFixed(4) +
+          " -> " + reg.u2.toFixed(4) + "," + reg.v2.toFixed(4));
+      log("  region.size = " + reg.width + "x" + reg.height);
+      log("  region.page = " + (reg.page ? reg.page.name + " " + reg.page.width + "x" + reg.page.height : "null"));
+      log("  region.texture = " + (reg.texture?.constructor?.name || "null"));
+      window.__reg = reg;
+      window.__page = reg.page;
+    }
+  }
+
+  log("\n=== 3. mesh 附件是否同构 ===");
+  const meshSlot = sk.findSlot("body");
+  const meshAtt = meshSlot?.pose?.attachment ?? null;
+  log("  body att type: " + (meshAtt?.constructor?.name || "null"));
+  if (meshAtt?.sequence) {
+    log("  mesh region: " + (meshAtt.sequence.regions[0]?.name || "null"));
+    window.__meshReg = meshAtt.sequence.regions[0];
+  }
+
+  log("\n=== 4. 重新上传纹理的可行路径 ===");
+  log("  spine.GLTexture = " + typeof spine.GLTexture);
+  log("  spine.TextureAtlas = " + typeof spine.TextureAtlas);
+  log("  page.regions.length = " + (window.__page?.regions?.length ?? "?"));
+  log("  page.setTexture = " + typeof window.__page?.setTexture);
+  log("\n准备好后运行 testSwap()");
+}
+
+// 关键实验：只换 leaf-1 那一个部件的贴图来源
+window.testSwap = function () {
+  const reg = window.__reg;
+  const page = window.__page;
+  if (!reg || !page) return log("missing reg/page", "err");
+
+  log("\n[SWAP] 把 leaf-1 的 UV 指到图集左上角 32x32", "hi");
+  try {
+    reg.u = 0;
+    reg.v = 0;
+    reg.u2 = 32 / page.width;
+    reg.v2 = 32 / page.height;
+    log("  uv written: " + reg.u2.toFixed(4) + "," + reg.v2.toFixed(4), "ok");
+    log("  → 若只有一片叶子变色，说明单附件替换可行", "ok");
+  } catch (e) {
+    log("  FAILED: " + e.message, "err");
+  }
+};
+
+// 验证：能否新建一张 GLTexture 覆盖整页
+window.testPageTexture = function () {
+  const page = window.__page;
+  if (!page) return log("missing page", "err");
+  log("\n[PAGE] 新建纯色纹理覆盖整页", "hi");
+  try {
+    const c = document.createElement("canvas");
+    c.width = page.width; c.height = page.height;
+    const g = c.getContext("2d");
+    g.fillStyle = "#3355ff";
+    g.fillRect(0, 0, c.width, c.height);
+    const tex = new spine.GLTexture(c);
+    page.setTexture(tex);
+    log("  page.setTexture() OK — 全图变蓝即证明可整体换图", "ok");
+  } catch (e) {
+    log("  FAILED: " + e.message, "err");
+  }
+};
+</script>
+</body>
+</html>

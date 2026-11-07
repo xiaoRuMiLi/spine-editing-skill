@@ -1,0 +1,35 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+*.log
+
+# generated outputs
+out/
+dist-out/
+preview*.html
+
+# local configuration (contains API keys)
+.env
+# viewer dependencies (not source)
+viewer/node_modules/
+viewer/package-lock.json
+
+# generated verification artifacts
+viewer/*.png
+viewer/final.png
+viewer/fixed.png
+viewer/aligned.png
+viewer/pigeon*.png
+viewer/bisect*.png
+
+# generated skin outputs
+examples/owl/skins/
+
+# python
+*.orig
+*.rej

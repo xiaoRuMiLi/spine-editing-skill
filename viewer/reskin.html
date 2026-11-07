@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>owl-reskin · 换皮效果</title>
+<style>
+  :root {
+    --bg: #14161c;
+    --panel: #1c1f28;
+    --border: #2c3040;
+    --text: #e6e8ee;
+    --muted: #8b91a3;
+    --accent: #4a9eff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  body { display: flex; flex-direction: column; }
+
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 20px; border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { margin: 0; font-size: 15px; font-weight: 600; }
+  header .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: #1f3a2a; color: #6ee7a0; border: 1px solid #2f5c42;
+  }
+  header .meta { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+  main { flex: 1; position: relative; min-height: 0; }
+  #player { position: absolute; inset: 0; }
+
+  .error {
+    position: absolute; inset: auto 20px 20px 20px;
+    background: #2a1a1a; border: 1px solid #5a2a2a; color: #ff9b9b;
+    padding: 12px 16px; border-radius: 8px; font-family: ui-monospace, monospace;
+    font-size: 12px; white-space: pre-wrap; display: none;
+  }
+
+  footer {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 20px; border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+  footer .label { color: var(--muted); font-size: 12px; margin-right: 4px; }
+  button {
+    background: #252a36; color: var(--text); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #2f3546; }
+  button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>owl-reskin</h1>
+  <span class="badge" id="status">加载中</span>
+  <span class="meta" id="info"></span>
+</header>
+
+<main>
+  <div id="player"></div>
+  <div class="error" id="error"></div>
+</main>
+
+<footer>
+  <span class="label">动画</span>
+  <div id="anims" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+</footer>
+
+<script src="node_modules/@esotericsoftware/spine-player/dist/iife/spine-player.js"></script>
+<script>
+const RESKIN_JSON  = "../examples/owl/reskinned/owl-reskin.json";
+const RESKIN_ATLAS = "../examples/owl/reskinned/owl-reskin.atlas";
+
+const statusEl = document.getElementById("status");
+const infoEl   = document.getElementById("info");
+const errorEl  = document.getElementById("error");
+const animsEl  = document.getElementById("anims");
+
+// 4.3 uses `skeleton` / `atlas`; `jsonUrl` / `atlasUrl` no longer exist.
+const player = new spine.SpinePlayer("player", {
+  skeleton: RESKIN_JSON,
+  atlas: RESKIN_ATLAS,
+  animation: "idle",
+  showControls: false,
+  backgroundColor: "#14161c",
+  alpha: true,
+  premultipliedAlpha: true,
+  success: (p) => {
+    statusEl.textContent = "渲染成功";
+    statusEl.style.cssText = "font-size:11px;padding:2px 8px;border-radius:10px;background:#1f3a2a;color:#6ee7a0;border:1px solid #2f5c42";
+
+    const data = p.skeleton.data;
+    infoEl.textContent =
+      `${p.skeleton.bones.length} 骨骼 · ${p.skeleton.slots.length} 槽位 · ${data.animations.length} 动画`;
+
+    data.animations.forEach((anim, i) => {
+      const btn = document.createElement("button");
+      btn.textContent = anim.name;
+      if (i === 0) btn.classList.add("active");
+      btn.onclick = () => {
+        player.setAnimation(anim.name);
+        [...animsEl.children].forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      };
+      animsEl.appendChild(btn);
+    });
+  },
+  error: (p, msg) => {
+    statusEl.textContent = "渲染失败";
+    statusEl.style.cssText = "font-size:11px;padding:2px 8px;border-radius:10px;background:#3a1f1f;color:#ff9b9b;border:1px solid #5a2a2a";
+    errorEl.style.display = "block";
+    errorEl.textContent = msg;
+  },
+});
+</script>
+</body>
+</html>
