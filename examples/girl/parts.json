@@ -1,0 +1,224 @@
+{
+  "source": {
+    "path": "D:\\Downloads\\image_161844278571506.png",
+    "splitter": "ColourSplitter"
+  },
+  "parts": [
+    {
+      "name": "shirt",
+      "image": "parts/shirt.png",
+      "width": 333,
+      "height": 336,
+      "box": [
+        253,
+        368,
+        586,
+        704
+      ],
+      "center": [
+        410.09,
+        539.69
+      ]
+    },
+    {
+      "name": "hair",
+      "image": "parts/hair.png",
+      "width": 312,
+      "height": 264,
+      "box": [
+        306,
+        157,
+        618,
+        421
+      ],
+      "center": [
+        446.24,
+        253.24
+      ]
+    },
+    {
+      "name": "head",
+      "image": "parts/head.png",
+      "width": 180,
+      "height": 181,
+      "box": [
+        404,
+        248,
+        584,
+        429
+      ],
+      "center": [
+        500.8,
+        335.06
+      ]
+    },
+    {
+      "name": "shorts",
+      "image": "parts/shorts.png",
+      "width": 205,
+      "height": 91,
+      "box": [
+        292,
+        682,
+        497,
+        773
+      ],
+      "center": [
+        391.35,
+        731.36
+      ]
+    },
+    {
+      "name": "leg-left-up",
+      "image": "parts/leg-left-up.png",
+      "width": 23,
+      "height": 126,
+      "box": [
+        454,
+        762,
+        477,
+        888
+      ],
+      "center": [
+        465.43,
+        807.41
+      ]
+    },
+    {
+      "name": "leg-left-down",
+      "image": "parts/leg-left-down.png",
+      "width": 52,
+      "height": 194,
+      "box": [
+        413,
+        767,
+        465,
+        961
+      ],
+      "center": [
+        438.5,
+        863.46
+      ]
+    },
+    {
+      "name": "foot-left",
+      "image": "parts/foot-left.png",
+      "width": 126,
+      "height": 119,
+      "box": [
+        404,
+        952,
+        530,
+        1071
+      ],
+      "center": [
+        458.93,
+        1020.37
+      ]
+    },
+    {
+      "name": "leg-right-up",
+      "image": "parts/leg-right-up.png",
+      "width": 30,
+      "height": 75,
+      "box": [
+        351,
+        772,
+        381,
+        847
+      ],
+      "center": [
+        362.41,
+        801.16
+      ]
+    },
+    {
+      "name": "leg-right-down",
+      "image": "parts/leg-right-down.png",
+      "width": 68,
+      "height": 151,
+      "box": [
+        284,
+        769,
+        352,
+        920
+      ],
+      "center": [
+        320.51,
+        845.81
+      ]
+    },
+    {
+      "name": "arm-left",
+      "image": "parts/arm-left.png",
+      "width": 195,
+      "height": 101,
+      "box": [
+        541,
+        467,
+        736,
+        568
+      ],
+      "center": [
+        636.77,
+        516.14
+      ]
+    },
+    {
+      "name": "foot-right",
+      "image": "parts/foot-right.png",
+      "width": 76,
+      "height": 136,
+      "box": [
+        250,
+        903,
+        326,
+        1039
+      ],
+      "center": [
+        287.0,
+        979.49
+      ]
+    },
+    {
+      "name": "arm-right",
+      "image": "parts/arm-right.png",
+      "width": 89,
+      "height": 177,
+      "box": [
+        213,
+        529,
+        302,
+        706
+      ],
+      "center": [
+        255.65,
+        619.23
+      ]
+    },
+    {
+      "name": "accent",
+      "image": "parts/accent.png",
+      "width": 91,
+      "height": 81,
+      "box": [
+        479,
+        298,
+        570,
+        379
+      ],
+      "center": [
+        527.25,
+        331.28
+      ]
+    }
+  ],
+  "preview": {
+    "sheet": "examples\\girl\\preview\\parts_sheet.png",
+    "reassembly": "examples\\girl\\preview\\reassembly.png"
+  },
+  "check": {
+    "coverage": 0.935,
+    "mean_diff": 25.24
+  }
+}

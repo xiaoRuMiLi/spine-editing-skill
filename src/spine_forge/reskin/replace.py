@@ -26,6 +26,8 @@ from PIL import Image
 from ..assets import atlas as atlas_io
 from ..assets import images as atlas_images
 from ..core.rig import Rig
+from ..skins import faceplate
+from ..skins.faceplate import BlankReport
 from .align import AlignResult, compute_scale
 from .propagate import PropagationReport, propagate_scale
 
@@ -38,6 +40,7 @@ class ReskinResult:
     align: AlignResult
     propagation: PropagationReport
     region_name: str
+    features: BlankReport | None = None
     notes: list[str] = field(default_factory=list)
 
     def report(self) -> dict[str, Any]:
@@ -47,6 +50,7 @@ class ReskinResult:
             "source_box": list(self.align.source_box),
             "target_box": list(self.align.target_box),
             "propagation": self.propagation.as_dict(),
+            "features": self.features.as_dict() if self.features else None,
             "notes": self.notes,
         }
 
@@ -67,6 +71,9 @@ def apply_reskin(
     skin: str = "default",
     propagate: bool = True,
     new_texture_name: str | None = None,
+    blank_features: bool = False,
+    feature_padding: float = 8.0,
+    feature_feather: int = 8,
 ) -> ReskinResult:
     """Replace one slot's artwork and keep dependent geometry consistent.
 
@@ -173,6 +180,44 @@ def apply_reskin(
 
     trimmed = sprite.crop((tb_left, tb_top, tb_right, tb_bottom))
 
+    # --- erase rig-owned features the model painted anyway ----------------
+    # The eye/beak layers live on their own slots, so anything the generator drew
+    # in those areas would be doubled at render time. The zones come from the rig
+    # and are mapped into the *sprite* frame here -- the same frame the pixels are
+    # about to be pasted from -- which is why this runs after alignment and not on
+    # a standalone preview. See PROJECT_LOG.md, section 十.
+    features: BlankReport | None = None
+    if blank_features:
+        plate_left, plate_top, plate_w, plate_h = faceplate.plate_geometry(rig, slot, skin)
+        if plate_w > 0 and plate_h > 0 and trimmed.width > 0 and trimmed.height > 0:
+            zones = faceplate.feature_zones(
+                rig,
+                slot,
+                image_size=(max(1, round(plate_w)), max(1, round(plate_h))),
+                skin=skin,
+                padding=feature_padding,
+            )
+            # Plate pixels -> this sprite's pixels. The generator copies the
+            # reference layout, so plate coordinates transfer by box ratio.
+            mapped = faceplate.map_zones(
+                zones,
+                source_size=(max(1, round(plate_w)), max(1, round(plate_h))),
+                source_box=(0.0, 0.0, plate_w, plate_h),
+                target_box=(0.0, 0.0, float(trimmed.width), float(trimmed.height)),
+            )
+            trimmed, features = faceplate.blank_features(
+                trimmed, mapped, mode="fill", feather=feature_feather
+            )
+            if features.filled:
+                notes.append(
+                    f"blanked {features.filled} rig-owned feature zone(s) from the "
+                    "generated plate so they are not drawn twice"
+                )
+            if features.skipped:
+                notes.append("feature zones outside the plate skipped: " + ", ".join(features.skipped))
+        else:
+            notes.append("feature masking skipped: plate has no usable geometry")
+
     # Where the subject should start inside the sampled box, measured against the
     # old art. Negative means the old subject started before its own box, which
     # cannot be reproduced; clamp to zero.
@@ -243,5 +288,6 @@ def apply_reskin(
         align=align,
         propagation=propagation,
         region_name=region_name,
+        features=features,
         notes=notes,
     )

@@ -1,0 +1,31 @@
+girl.png
+	size: 896, 1024
+	format: RGBA8888
+	filter: Linear, Linear
+	repeat: none
+shirt
+	bounds: 2, 2, 333, 336
+hair
+	bounds: 337, 2, 312, 264
+leg-left-down
+	bounds: 651, 2, 52, 194
+head
+	bounds: 705, 2, 180, 181
+arm-right
+	bounds: 2, 340, 89, 177
+leg-right-down
+	bounds: 93, 340, 68, 151
+foot-right
+	bounds: 163, 340, 76, 136
+leg-left-up
+	bounds: 241, 340, 23, 126
+foot-left
+	bounds: 266, 340, 126, 119
+arm-left
+	bounds: 394, 340, 195, 101
+shorts
+	bounds: 591, 340, 205, 91
+accent
+	bounds: 798, 340, 91, 81
+leg-right-up
+	bounds: 2, 519, 30, 75

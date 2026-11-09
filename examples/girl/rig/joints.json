@@ -1,0 +1,369 @@
+{
+  "name": "girl",
+  "joints": [
+    {
+      "name": "root",
+      "parent": null,
+      "base": [
+        398.0,
+        649.0
+      ],
+      "tip": [
+        398.0,
+        649.0
+      ]
+    },
+    {
+      "name": "hips",
+      "parent": "root",
+      "base": [
+        398.0,
+        649.0
+      ],
+      "tip": [
+        397.05,
+        583.1
+      ]
+    },
+    {
+      "name": "chest",
+      "parent": "hips",
+      "base": [
+        397.05,
+        583.1
+      ],
+      "tip": [
+        460.0,
+        426.57
+      ]
+    },
+    {
+      "name": "neck",
+      "parent": "chest",
+      "base": [
+        460.0,
+        426.57
+      ],
+      "tip": [
+        458.0,
+        400.0
+      ]
+    },
+    {
+      "name": "head",
+      "parent": "neck",
+      "base": [
+        458.0,
+        400.0
+      ],
+      "tip": [
+        458.61,
+        271.43
+      ]
+    },
+    {
+      "name": "head-control",
+      "parent": "chest",
+      "base": [
+        458.0,
+        400.0
+      ],
+      "tip": [
+        458.0,
+        400.0
+      ]
+    },
+    {
+      "name": "hair",
+      "parent": "head",
+      "base": [
+        430.25,
+        186.9
+      ],
+      "tip": [
+        306.0,
+        344.0
+      ]
+    },
+    {
+      "name": "shoulder_r",
+      "parent": "chest",
+      "base": [
+        358.5,
+        428.0
+      ],
+      "tip": [
+        358.5,
+        428.0
+      ]
+    },
+    {
+      "name": "arm_r",
+      "parent": "shoulder_r",
+      "base": [
+        358.5,
+        428.0
+      ],
+      "tip": [
+        292.5,
+        531.0
+      ]
+    },
+    {
+      "name": "fore_r",
+      "parent": "arm_r",
+      "base": [
+        292.5,
+        531.0
+      ],
+      "tip": [
+        249.5,
+        631.07
+      ]
+    },
+    {
+      "name": "hand_r",
+      "parent": "fore_r",
+      "base": [
+        249.5,
+        631.07
+      ],
+      "tip": [
+        233.5,
+        712.0
+      ]
+    },
+    {
+      "name": "shoulder_l",
+      "parent": "chest",
+      "base": [
+        527.55,
+        430.63
+      ],
+      "tip": [
+        527.55,
+        430.63
+      ]
+    },
+    {
+      "name": "arm_l",
+      "parent": "shoulder_l",
+      "base": [
+        527.55,
+        430.63
+      ],
+      "tip": [
+        541.54,
+        546.0
+      ]
+    },
+    {
+      "name": "fore_l",
+      "parent": "arm_l",
+      "base": [
+        541.54,
+        546.0
+      ],
+      "tip": [
+        650.5,
+        511.5
+      ]
+    },
+    {
+      "name": "hand_l",
+      "parent": "fore_l",
+      "base": [
+        650.5,
+        511.5
+      ],
+      "tip": [
+        722.5,
+        483.0
+      ]
+    },
+    {
+      "name": "leg_r",
+      "parent": "hips",
+      "base": [
+        353.0,
+        647.5
+      ],
+      "tip": [
+        351.0,
+        813.5
+      ]
+    },
+    {
+      "name": "shin_r",
+      "parent": "leg_r",
+      "base": [
+        351.0,
+        813.5
+      ],
+      "tip": [
+        279.5,
+        947.5
+      ]
+    },
+    {
+      "name": "foot_r",
+      "parent": "shin_r",
+      "base": [
+        279.5,
+        947.5
+      ],
+      "tip": [
+        304.23,
+        1020.56
+      ]
+    },
+    {
+      "name": "leg_l",
+      "parent": "hips",
+      "base": [
+        443.08,
+        652.0
+      ],
+      "tip": [
+        457.5,
+        818.0
+      ]
+    },
+    {
+      "name": "shin_l",
+      "parent": "leg_l",
+      "base": [
+        457.5,
+        818.0
+      ],
+      "tip": [
+        435.0,
+        988.5
+      ]
+    },
+    {
+      "name": "foot_l",
+      "parent": "shin_l",
+      "base": [
+        435.0,
+        988.5
+      ],
+      "tip": [
+        505.05,
+        1040.57
+      ]
+    },
+    {
+      "name": "ik_foot_r",
+      "parent": "root",
+      "base": [
+        279.5,
+        947.5
+      ],
+      "tip": [
+        279.5,
+        947.5
+      ]
+    },
+    {
+      "name": "ik_foot_l",
+      "parent": "root",
+      "base": [
+        435.0,
+        988.5
+      ],
+      "tip": [
+        435.0,
+        988.5
+      ]
+    },
+    {
+      "name": "ik_hand_r",
+      "parent": "root",
+      "base": [
+        249.5,
+        631.07
+      ],
+      "tip": [
+        249.5,
+        631.07
+      ]
+    },
+    {
+      "name": "ik_hand_l",
+      "parent": "root",
+      "base": [
+        650.5,
+        511.5
+      ],
+      "tip": [
+        650.5,
+        511.5
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "type": "ik",
+      "name": "foot_r",
+      "target": "ik_foot_r",
+      "bones": [
+        "leg_r",
+        "shin_r"
+      ],
+      "bendPositive": false
+    },
+    {
+      "type": "ik",
+      "name": "foot_l",
+      "target": "ik_foot_l",
+      "bones": [
+        "leg_l",
+        "shin_l"
+      ],
+      "bendPositive": false
+    },
+    {
+      "type": "ik",
+      "name": "hand_r",
+      "target": "ik_hand_r",
+      "bones": [
+        "arm_r",
+        "fore_r"
+      ],
+      "bendPositive": true
+    },
+    {
+      "type": "ik",
+      "name": "hand_l",
+      "target": "ik_hand_l",
+      "bones": [
+        "arm_l",
+        "fore_l"
+      ],
+      "bendPositive": true
+    },
+    {
+      "type": "transform",
+      "name": "head-follow",
+      "source": "head-control",
+      "bones": [
+        "head"
+      ],
+      "mixRotate": 1.0,
+      "mixX": 1.0,
+      "mixY": 1.0
+    },
+    {
+      "type": "transform",
+      "name": "hair-follow",
+      "source": "head-control",
+      "bones": [
+        "hair"
+      ],
+      "mixRotate": 0.35,
+      "mixX": 0.1,
+      "mixY": 0.1
+    }
+  ]
+}

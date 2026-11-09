@@ -24,7 +24,12 @@ Command = Callable[[argparse.Namespace], dict[str, Any]]
 def _cmd_split(args: argparse.Namespace) -> dict[str, Any]:
     from .stages import split
 
-    return split.run(args.image, args.out)
+    return split.run(
+        args.image,
+        args.out,
+        kind=args.splitter,
+        previews=not args.no_preview,
+    )
 
 
 def _cmd_rig(args: argparse.Namespace) -> dict[str, Any]:
@@ -44,6 +49,32 @@ def _cmd_preview(args: argparse.Namespace) -> dict[str, Any]:
 
     # preview expects the rig document; build writes it beside the atlas page.
     return preview.run(args.rig, args.out)
+
+
+def _cmd_skeleton(args: argparse.Namespace) -> dict[str, Any]:
+    from .stages import skeleton
+
+    return skeleton.run(
+        args.image,
+        args.out,
+        marks_path=args.marks,
+        spec_path=args.joints,
+        name=args.name,
+        snap=not args.no_snap,
+    )
+
+
+def _cmd_assemble(args: argparse.Namespace) -> dict[str, Any]:
+    from .stages import assemble
+
+    return assemble.run(
+        args.parts,
+        args.bones,
+        args.out,
+        name=args.name,
+        mode=args.mode,
+        warp=args.warp,
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -73,8 +104,20 @@ def _build_parser() -> argparse.ArgumentParser:
     subs = parser.add_subparsers(dest="command", required=True)
 
     p_split = subs.add_parser("split", parents=[common], help="split one image into part PNGs")
-    p_split.add_argument("image", help="source PNG with a transparent background")
+    p_split.add_argument("image", help="source PNG")
     p_split.add_argument("--out", required=True, help="output directory")
+    p_split.add_argument(
+        "--splitter",
+        choices=("alpha", "colour"),
+        default="alpha",
+        help="alpha = parts already detached by transparency; colour = flat illustration "
+        "separated by fill colour (see docs/parts-splitting.md)",
+    )
+    p_split.add_argument(
+        "--no-preview",
+        action="store_true",
+        help="skip the contact sheet and reassembly check",
+    )
     p_split.set_defaults(func=_cmd_split)
 
     p_rig = subs.add_parser(
@@ -98,6 +141,54 @@ def _build_parser() -> argparse.ArgumentParser:
     p_preview.add_argument("rig", help="path to rig.json, or a built skeleton.json")
     p_preview.add_argument("--out", required=True, help="output .html path")
     p_preview.set_defaults(func=_cmd_preview)
+
+    p_skel = subs.add_parser(
+        "skeleton",
+        parents=[common],
+        help="marked artwork + joint table -> bones.json + review panel",
+    )
+    p_skel.add_argument("image", help="artwork (or a copy carrying the human's ring marks)")
+    p_skel.add_argument("--out", required=True, help="output directory")
+    p_skel.add_argument(
+        "--marks",
+        help="image with ring marks, or a marks JSON; defaults to the artwork itself",
+    )
+    p_skel.add_argument(
+        "--joints",
+        help="joint table JSON (name/parent/base/tip); omit to only read the marks",
+    )
+    p_skel.add_argument("--name", default="character", help="skeleton name")
+    p_skel.add_argument(
+        "--no-snap",
+        action="store_true",
+        help="keep the table's coordinates instead of pulling them onto nearby marks",
+    )
+    p_skel.set_defaults(func=_cmd_skeleton)
+
+    p_assemble = subs.add_parser(
+        "assemble",
+        parents=[common],
+        help="parts.json + bones.json -> Spine project (skeleton.json + atlas + page)",
+    )
+    p_assemble.add_argument("parts", help="parts.json produced by split")
+    p_assemble.add_argument("--bones", required=True, help="bones.json produced by skeleton")
+    p_assemble.add_argument("--out", required=True, help="output directory")
+    p_assemble.add_argument("--name", help="skeleton name (defaults to the one in bones.json)")
+    p_assemble.add_argument(
+        "--mode",
+        choices=("atlas", "images"),
+        default="atlas",
+        help="atlas = one packed page + .atlas (web runtime); images = one PNG per part "
+        "next to the skeleton (what the Spine editor opens without an atlas)",
+    )
+    p_assemble.add_argument(
+        "--warp",
+        choices=("none", "legs"),
+        default="none",
+        help="legs = one weighted mesh per leg (bends at the knee by warping one "
+        "image) instead of two rigid cut halves",
+    )
+    p_assemble.set_defaults(func=_cmd_assemble)
 
     return parser
 

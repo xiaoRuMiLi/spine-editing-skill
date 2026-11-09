@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "_about": "生图提示词模板与词库。改这个文件就能调整指令，不用改代码。模板里的 {name} 是占位符，{name} 缺失不会报错，整个子句会被跳过。",
+
+  "defaults": {
+    "style": "illustration",
+    "view": "front",
+    "style_from_reference": true,
+    "features_from_rig": true
+  },
+
+  "templates": {
+    "subject": "Redraw the subject in the reference image as {subject}.",
+    "technique_from_reference": "Keep only the reference's rendering technique - brushwork, shading, palette, edge treatment - and discard its shapes and proportions: {style}.",
+    "technique_standalone": "Rendering technique: {style}.",
+    "structure": "Required geometric changes: {structure}.",
+    "viewpoint": "Viewpoint: {view}.",
+    "composition": "Composition: {composition}.",
+    "background": "Background: {background}.",
+    "aspect": "Canvas shape: aspect ratio close to {ratio}:1 (reference is {width}x{height})."
+  },
+
+  "background": "one plain solid colour, completely flat, no shadow, no vignette, no gradient, no props",
+
+  "style_library": {
+    "illustration": "hand-painted storybook illustration rendering, visible brush strokes, gouache-like opaque colour with soft shading, warm ochre-cream-burgundy palette taken from the reference, crisp clean silhouette, simplified decorative shapes, no photorealistic feather detail, no photographic texture",
+    "painterly-2d": "soft painterly 2D rendering, smooth airbrushed shading, visible brush texture, muted warm palette, crisp clean silhouette, no black outline",
+    "flat-vector": "flat 2D vector rendering, thick dark outlines, cel shading, hard colour blocks with no gradients, limited warm palette, no photographic texture",
+    "cartoon": "hand-drawn cartoon rendering, clean outlines, soft cel shading, simplified shapes, flat fills",
+    "pixel": "pixel art rendering, limited palette, hard pixel edges, no anti-aliasing, no gradients",
+    "watercolour": "watercolour rendering, soft pigment bleeds, visible paper texture, organic edges, no hard digital lines",
+    "3d-render": "stylised 3D rendering, soft global illumination, rounded forms, clean surface shading"
+  },
+
+  "part_hints": {
+    "head": "the head and face plate only, blank surface, no eyes, no pupils, no beak, no nostril, no facial features - those are separate layers",
+    "body": "torso only, no head, no limbs",
+    "wing": "a single wing, isolated, side view",
+    "foot": "a single foot, isolated, side view",
+    "beak": "only the beak, isolated, side view",
+    "eye": "a single eye, isolated, front view",
+    "leaf": "a single leaf, isolated",
+    "wood": "one segment of branch, isolated"
+  },
+
+  "part_structure": {
+    "head": "the silhouette follows the new species, never the reference: no inherited ear tufts, facial disc, ringed eye sockets or neck ruff",
+    "body": "the torso silhouette follows the new species; do not inherit the reference's outline, proportions or feather layout",
+    "wing": "the wing outline follows the new species; do not inherit the reference's feather count or layout",
+    "foot": "the foot shape follows the new species; do not inherit the reference's toe count or claws",
+    "beak": "the beak shape follows the new species; do not inherit the reference's length or curvature",
+    "eye": "iris, pupil and lid shape follow the new species; do not inherit the reference's eye markings",
+    "leaf": "the leaf outline follows the new subject, not the reference",
+    "wood": "the branch outline follows the new subject, not the reference"
+  },
+
+  "default_structure": "the outline follows the new subject, never the reference's silhouette",
+
+  "view_words": {
+    "front": "strictly front view, symmetrical, facing the viewer directly, both eyes visible at the same height, full face, not a profile",
+    "side": "strict side profile, one eye visible, facing left",
+    "three-quarter": "three-quarter view, facing slightly to the left"
+  },
+
+  "negative": {
+    "baseline": "text, watermark, signature, logo, frame, border, photograph, photorealistic, 3d render, depth of field, multiple characters, extra limbs, cropped, blurry, low quality",
+    "view": {
+      "front": "side profile, three-quarter view, profile, one eye visible, turned head",
+      "side": "front view, symmetrical face, both eyes",
+      "three-quarter": "strict profile, symmetrical front view"
+    },
+    "features_from_rig": "eyes, eyeballs, pupils, iris, eyelashes, beak, nostrils, facial features, mouth, teeth"
+  }
+}

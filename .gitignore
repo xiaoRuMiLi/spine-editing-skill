@@ -12,6 +12,10 @@ dist/
 out/
 dist-out/
 preview*.html
+viewer/_preview_*.html
+
+# …but the girl example's built project IS part of the deliverable (before/after baseline)
+!examples/girl/dist/
 
 # local configuration (contains API keys)
 .env
