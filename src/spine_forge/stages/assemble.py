@@ -256,10 +256,11 @@ def run(
 
         # The joint is where the two bones meet: the lower bone's base.
         knee = joints[lower]["base"]
-        axis = (
-            float(joints[lower]["tip"][0]) - float(knee[0]),
-            float(joints[lower]["tip"][1]) - float(knee[1]),
-        )
+        chain = [
+            joints[upper]["base"],
+            knee,
+            joints[lower]["tip"],
+        ]
         cols, rows = grid_for(crop.width, crop.height)
         mesh = build_warp_mesh(
             box=[left, top, right, bottom],
@@ -267,8 +268,7 @@ def run(
             bone_names=bone_names,
             upper=upper,
             lower=lower,
-            pivot=(float(knee[0]), float(knee[1])),
-            axis=axis,
+            chain=[(float(p[0]), float(p[1])) for p in chain],
             canvas_height=float(canvas_h),
             cols=cols,
             rows=rows,

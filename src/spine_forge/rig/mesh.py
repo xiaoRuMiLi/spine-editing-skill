@@ -125,6 +125,41 @@ def _hull_edges(hull: int) -> list[int]:
     return edges
 
 
+def _chain_param(
+    chain: Sequence[Point], x: float, y: float
+) -> tuple[float, float, float]:
+    """Where (x, y) sits along a polyline: (arc length, total length, joint length).
+
+    Projecting onto a single bone's axis is not enough: a corner of the artwork's
+    bounding box can be 80 px away from the knee and still project onto the joint,
+    and would then be handed to the shin bone -- the upper thigh gets dragged
+    along and the leg looks torn apart. Walking the whole chain and taking the
+    NEAREST point puts every vertex on the segment it actually belongs to.
+    """
+    best_distance = float("inf")
+    best_s = 0.0
+    travelled = 0.0
+    joint = 0.0
+    for index, (start, end) in enumerate(zip(chain, chain[1:])):
+        x0, y0 = float(start[0]), float(start[1])
+        x1, y1 = float(end[0]), float(end[1])
+        dx, dy = x1 - x0, y1 - y0
+        segment = math.hypot(dx, dy)
+        if segment <= 1e-9:
+            continue
+        t = ((x - x0) * dx + (y - y0) * dy) / (segment * segment)
+        t = min(1.0, max(0.0, t))
+        closest_x, closest_y = x0 + t * dx, y0 + t * dy
+        distance = math.hypot(x - closest_x, y - closest_y)
+        if distance < best_distance:
+            best_distance = distance
+            best_s = travelled + t * segment
+        travelled += segment
+        if index == 0:
+            joint = travelled
+    return best_s, travelled, joint
+
+
 def build_warp_mesh(
     *,
     box: Sequence[float],
@@ -132,8 +167,7 @@ def build_warp_mesh(
     bone_names: Sequence[str],
     upper: str,
     lower: str,
-    pivot: Point,
-    axis: Point,
+    chain: Sequence[Point],
     canvas_height: float,
     cols: int = 5,
     rows: int = 14,
@@ -144,14 +178,17 @@ def build_warp_mesh(
     Parameters are in source-image pixels (y down) so they line up with
     ``parts.json``:
 
-    * ``box``      -- (left, top, right, bottom) of the artwork in the canvas.
-    * ``pivot``    -- the joint, i.e. where the two bones meet.
-    * ``axis``     -- unit vector pointing from the joint towards the LOWER bone.
-    * ``band``     -- half-width of the blend band, in pixels. Roughly half the
-                      limb thickness gives a knee-like fold without pinching.
+    * ``box``   -- (left, top, right, bottom) of the artwork in the canvas.
+    * ``chain`` -- the bone chain that runs through the limb, as pixels:
+                   [hip, knee, ankle]. The knee is where the two bones meet.
+    * ``band``  -- half-width of the blend band, measured ALONG the chain.
+                   Roughly half the limb thickness gives a knee-like fold
+                   without pinching.
 
     The mesh is a regular grid over the artwork's bounding box; the transparent
-    corners of that box are harmless because the texture is transparent there.
+    corners of that box are harmless because the texture is transparent there --
+    but they must still be weighted to the bone whose segment is closest to them,
+    which is what ``_chain_param`` provides.
     """
     left, top, right, bottom = (float(v) for v in box)
     width, height = right - left, bottom - top
@@ -160,15 +197,10 @@ def build_warp_mesh(
     for name in (upper, lower):
         if name not in frames:
             raise ValueError(f"warp mesh references unknown bone {name!r}")
+    if len(chain) != 3:
+        raise ValueError("a warp chain needs exactly three points: hip, knee, ankle")
 
     bone_index = {name: i for i, name in enumerate(bone_names)}
-
-    axis_x, axis_y = float(axis[0]), float(axis[1])
-    length = math.hypot(axis_x, axis_y) or 1.0
-    axis_x, axis_y = axis_x / length, axis_y / length
-    # Image space is y DOWN; the mesh is built in Spine's y UP space.
-    axis_x, axis_y = axis_x, -axis_y
-    pivot_world = (float(pivot[0]), canvas_height - float(pivot[1]))
 
     order, _, hull, triangles = grid_topology(cols, rows)
 
@@ -181,8 +213,8 @@ def build_warp_mesh(
 
         world_x = px
         world_y = canvas_height - py
-        along = (world_x - pivot_world[0]) * axis_x + (world_y - pivot_world[1]) * axis_y
-        weight_lower = _smoothstep(0.5 + along / (2.0 * band))
+        along, _, joint = _chain_param(chain, px, py)
+        weight_lower = _smoothstep((along - joint) / (2.0 * band) + 0.5)
 
         if weight_lower <= 0.0:
             entries = [(upper, 1.0)]

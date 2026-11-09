@@ -18,8 +18,7 @@ from spine_forge.rig.mesh import (
 # space the thigh runs 300 -> 200 and the shin 200 -> 100.
 CANVAS_H = 400.0
 BOX = (80.0, 100.0, 120.0, 300.0)
-PIVOT = (100.0, 200.0)  # the knee
-AXIS = (0.0, 1.0)  # along the shin, image space (y down)
+CHAIN = ((100.0, 100.0), (100.0, 200.0), (100.0, 300.0))  # hip, knee, ankle
 BONE_NAMES = ["root", "thigh", "shin"]
 FRAMES = {
     "root": (0.0, 0.0, 0.0),
@@ -46,8 +45,7 @@ def _mesh(**overrides):
         bone_names=BONE_NAMES,
         upper="thigh",
         lower="shin",
-        pivot=PIVOT,
-        axis=AXIS,
+        chain=CHAIN,
         canvas_height=CANVAS_H,
         cols=5,
         rows=11,
