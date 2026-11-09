@@ -145,23 +145,41 @@ def _build(tmp_path: Path, leg_control: str, arm_control: str = "ik") -> dict:
     return json.loads((out / "girl.json").read_text(encoding="utf-8"))
 
 
-def test_path_mode_replaces_the_leg_ik_instead_of_fighting_it(tmp_path):
+def test_path_mode_keeps_the_ik_and_adds_a_deform_chain(tmp_path):
+    """The official architecture: the path drives a separate chain, the IK keeps
+    the player-facing bones, and the CURVE is skinned to those bones so both
+    controls compose instead of fighting over the same bones."""
     document = _build(tmp_path, "path")
-    kinds = [(c["type"], c.get("name")) for c in document["constraints"]]
+    paths = [c for c in document["constraints"] if c["type"] == "path"]
+    assert {c["name"] for c in paths} == {"leg-path-r", "leg-path-l"}
 
-    assert ("path", "leg-path-r") in kinds
-    assert ("path", "leg-path-l") in kinds
-    # One boss per bone: the foot IK must be gone, the hand IK must stay.
-    driven = {bone for c in document["constraints"] if c["type"] == "path" for bone in c["bones"]}
-    assert driven == {"leg_r", "shin_r", "leg_l", "shin_l"}
-    for constraint in document["constraints"]:
-        if constraint["type"] == "ik":
-            assert not (set(constraint["bones"]) & driven)
+    driven = {bone for c in paths for bone in c["bones"]}
+    assert driven == {f"{side}-d{i}" for side in ("leg_r", "leg_l") for i in range(1, 9)}
 
-    slots = {slot["name"]: slot for slot in document["slots"]}
-    assert slots["leg-curve-r"]["bone"] == "root"
+    # The IK on the player-facing bones must survive: it now carries the curve.
+    ik_targets = {c.get("target") for c in document["constraints"] if c["type"] == "ik"}
+    assert {"ik_foot_r", "ik_foot_l"} <= ik_targets
+
+    # The path points are weighted to those same bones (leg_r / shin_r).
+    names = [bone["name"] for bone in document["bones"]]
     attachment = document["skins"][0]["attachments"]["leg-curve-r"]["leg-curve-r"]
-    assert attachment["type"] == "path"
+    flat = attachment["vertices"]
+    used = {names[int(flat[i + 1])] for i in range(0, len(flat), 5)}
+    assert used == {"leg_r", "shin_r"}
+
+    # And the skin is weighted to the chain, not to the IK bones.
+    mesh = document["skins"][0]["attachments"]["leg-right"]["leg-right"]
+    flat = mesh["vertices"]
+    i = 0
+    bones_in_mesh = set()
+    while i < len(flat):
+        count = int(flat[i])
+        i += 1
+        for _ in range(count):
+            bones_in_mesh.add(names[int(flat[i])])
+            i += 4
+    assert bones_in_mesh <= set(driven) | {"leg_r", "shin_r"}
+    assert any(bone.endswith("-d1") for bone in bones_in_mesh)
 
 
 def test_ik_mode_has_no_paths_at_all(tmp_path):
@@ -187,9 +205,13 @@ def test_arm_path_replaces_the_hand_ik_too(tmp_path):
 def test_both_limbs_can_be_path_driven_at_once(tmp_path):
     document = _build(tmp_path, "path", "path")
     driven = {bone for c in document["constraints"] if c["type"] == "path" for bone in c["bones"]}
-    assert driven == {"leg_r", "shin_r", "leg_l", "shin_l", "arm_r", "fore_r", "arm_l", "fore_l"}
-    # No IK may be left on any of those bones.
-    assert not [c for c in document["constraints"] if c["type"] == "ik"]
+    # Legs get the deform chain; arms (no mesh) still drive their own two bones.
+    assert {f"leg_r-d{i}" for i in range(1, 9)} <= driven
+    assert {"arm_r", "fore_r", "arm_l", "fore_l"} <= driven
+    # Hand IK is dropped (path owns those bones); foot IK survives.
+    ik = {c.get("target") for c in document["constraints"] if c["type"] == "ik"}
+    assert {"ik_foot_r", "ik_foot_l"} <= ik
+    assert "ik_hand_r" not in ik
 
 
 def test_self_check_rejects_a_vertex_count_that_is_not_a_multiple_of_three(tmp_path):

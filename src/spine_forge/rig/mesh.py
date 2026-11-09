@@ -152,6 +152,100 @@ def _chain_param(
     return best_s, travelled, joint
 
 
+def _weights_at(
+    s: float, ends: Sequence[float], names: Sequence[str], band: float
+) -> list[tuple[str, float]]:
+    """Which bone(s) a vertex at arc length ``s`` belongs to.
+
+    ``ends`` are the cumulative arc lengths where each bone's span ends. With
+    equal-length deform bones (~40 px) and a 10 px band, at most one boundary can
+    touch a vertex, so a simple crossfade is exact and much easier to read than a
+    general N-way blend.
+    """
+    for index, edge in enumerate(ends[:-1]):
+        if edge - band <= s <= edge + band:
+            t = _smoothstep((s - (edge - band)) / (2.0 * band))
+            return [(names[index], 1.0 - t), (names[index + 1], t)]
+    for index, edge in enumerate(ends):
+        if s < edge:
+            return [(names[index], 1.0)]
+    return [(names[-1], 1.0)]
+
+
+def build_chain_mesh(
+    *,
+    box: Sequence[float],
+    frames: Mapping[str, Frame],
+    bone_names: Sequence[str],
+    chain: Sequence[Point],
+    segments: Sequence[str],
+    canvas_height: float,
+    cols: int = 5,
+    rows: int = 14,
+    band: float = 10.0,
+) -> dict[str, Any]:
+    """Mesh weighted across a chain of equal-length deform bones.
+
+    Same grid/UV rules as :func:`build_warp_mesh` (region-local UVs, v=0 at the
+    top, hull first), but the weights spread over ``segments`` (in order, hip to
+    ankle) instead of a single knee.
+    """
+    left, top, right, bottom = (float(v) for v in box)
+    width, height = right - left, bottom - top
+    if width <= 0 or height <= 0:
+        raise ValueError(f"degenerate warp box: {tuple(box)}")
+    if len(segments) < 2:
+        raise ValueError("a chain mesh needs at least two bones")
+    for name in segments:
+        if name not in frames:
+            raise ValueError(f"chain mesh references unknown bone {name!r}")
+
+    bone_index = {name: i for i, name in enumerate(bone_names)}
+    _, total, _ = _chain_param(chain, left, top)
+    ends = [total * (i + 1) / len(segments) for i in range(len(segments))]
+
+    order, _, hull, triangles = grid_topology(cols, rows)
+    uvs: list[float] = []
+    vertices: list[float] = []
+
+    for i, j in order:
+        px = left + width * i / (cols - 1)
+        py = top + height * j / (rows - 1)
+        uvs += [round(i / (cols - 1), 6), round(j / (rows - 1), 6)]
+
+        world_x = px
+        world_y = canvas_height - py
+        along, _, _ = _chain_param(chain, px, py)
+        entries = _weights_at(along, ends, segments, band)
+        entries = [(name, round(weight, 4)) for name, weight in entries if round(weight, 4) > 0]
+        if not entries:
+            entries = [(segments[-1], 1.0)]
+
+        vertices.append(float(len(entries)))
+        for name, weight in entries:
+            lx, ly = local_point(frames[name], world_x, world_y)
+            vertices += [float(bone_index[name]), round(lx, 3), round(ly, 3), weight]
+
+    cursor = 0
+    while cursor < len(vertices):
+        count = int(vertices[cursor])
+        block = vertices[cursor + 1 : cursor + 1 + count * 4]
+        total_weight = sum(block[i] for i in range(3, len(block), 4))
+        if abs(total_weight - 1.0) > 1e-3:
+            raise ValueError(f"chain mesh vertex weights sum to {total_weight:.4f}, not 1")
+        cursor += 1 + count * 4
+
+    return {
+        "type": "mesh",
+        "width": round(width, 3),
+        "height": round(height, 3),
+        "uvs": uvs,
+        "triangles": triangles,
+        "vertices": vertices,
+        "hull": hull,
+    }
+
+
 def build_warp_mesh(
     *,
     box: Sequence[float],

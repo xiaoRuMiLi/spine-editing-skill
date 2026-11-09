@@ -1,6 +1,6 @@
 {
   "skeleton": {
-    "hash": "b2f65574fab3b7b96fbe",
+    "hash": "3edf974ae979cab314ea",
     "spine": "4.3.26",
     "x": -448.0,
     "y": 0,
@@ -210,16 +210,6 @@
   ],
   "slots": [
     {
-      "name": "arm-curve-r",
-      "bone": "root",
-      "attachment": "arm-curve-r"
-    },
-    {
-      "name": "arm-curve-l",
-      "bone": "root",
-      "attachment": "arm-curve-l"
-    },
-    {
       "name": "leg-right",
       "bone": "leg_r",
       "attachment": "leg-right"
@@ -279,126 +269,6 @@
     {
       "name": "default",
       "attachments": {
-        "arm-curve-r": {
-          "arm-curve-r": {
-            "type": "path",
-            "closed": false,
-            "constantSpeed": true,
-            "vertexCount": 9,
-            "vertices": [
-              1.0,
-              0.0,
-              -39.5,
-              221.0,
-              1.0,
-              1.0,
-              0.0,
-              -39.5,
-              221.0,
-              1.0,
-              1.0,
-              0.0,
-              -61.5,
-              186.667,
-              1.0,
-              1.0,
-              0.0,
-              -83.5,
-              152.333,
-              1.0,
-              1.0,
-              0.0,
-              -105.5,
-              118.0,
-              1.0,
-              1.0,
-              0.0,
-              -119.833,
-              84.643,
-              1.0,
-              1.0,
-              0.0,
-              -134.167,
-              51.287,
-              1.0,
-              1.0,
-              0.0,
-              -148.5,
-              17.93,
-              1.0,
-              1.0,
-              0.0,
-              -148.5,
-              17.93,
-              1.0
-            ],
-            "lengths": [
-              122.332,
-              231.249,
-              231.249
-            ]
-          }
-        },
-        "arm-curve-l": {
-          "arm-curve-l": {
-            "type": "path",
-            "closed": false,
-            "constantSpeed": true,
-            "vertexCount": 9,
-            "vertices": [
-              1.0,
-              0.0,
-              129.55,
-              218.37,
-              1.0,
-              1.0,
-              0.0,
-              129.55,
-              218.37,
-              1.0,
-              1.0,
-              0.0,
-              134.213,
-              179.913,
-              1.0,
-              1.0,
-              0.0,
-              138.877,
-              141.457,
-              1.0,
-              1.0,
-              0.0,
-              143.54,
-              103.0,
-              1.0,
-              1.0,
-              0.0,
-              179.86,
-              114.5,
-              1.0,
-              1.0,
-              0.0,
-              216.18,
-              126.0,
-              1.0,
-              1.0,
-              0.0,
-              252.5,
-              137.5,
-              1.0,
-              1.0,
-              0.0,
-              252.5,
-              137.5,
-              1.0
-            ],
-            "lengths": [
-              116.215,
-              230.507,
-              230.507
-            ]
-          }
-        },
         "leg-right": {
           "leg-right": {
             "type": "mesh",
@@ -3389,6 +3259,26 @@
       "bendPositive": false
     },
     {
+      "type": "ik",
+      "name": "hand_r",
+      "target": "ik_hand_r",
+      "bones": [
+        "arm_r",
+        "fore_r"
+      ],
+      "bendPositive": true
+    },
+    {
+      "type": "ik",
+      "name": "hand_l",
+      "target": "ik_hand_l",
+      "bones": [
+        "arm_l",
+        "fore_l"
+      ],
+      "bendPositive": true
+    },
+    {
       "type": "transform",
       "name": "head-follow",
       "source": "head-control",
@@ -3409,30 +3299,6 @@
       "mixRotate": 0.35,
       "mixX": 0.1,
       "mixY": 0.1
-    },
-    {
-      "type": "path",
-      "name": "arm-path-r",
-      "slot": "arm-curve-r",
-      "bones": [
-        "arm_r",
-        "fore_r"
-      ],
-      "spacingMode": "length",
-      "rotateMode": "chain",
-      "spacing": 0.0
-    },
-    {
-      "type": "path",
-      "name": "arm-path-l",
-      "slot": "arm-curve-l",
-      "bones": [
-        "arm_l",
-        "fore_l"
-      ],
-      "spacingMode": "length",
-      "rotateMode": "chain",
-      "spacing": 0.0
     }
   ]
 }

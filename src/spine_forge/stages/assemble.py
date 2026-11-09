@@ -38,8 +38,13 @@ import numpy as np
 from PIL import Image
 
 from ..core.verify import check_document
-from ..rig.mesh import bone_world_frames, build_warp_mesh
-from ..rig.path import build_path_attachment, build_path_constraint
+from ..rig.chain import chain_bones, subdivide
+from ..rig.mesh import bone_world_frames, build_chain_mesh, build_warp_mesh
+from ..rig.path import (
+    build_path_attachment,
+    build_path_constraint,
+    build_path_constraint_equal_chain,
+)
 
 # Part names come from the colour splitter (``leg-left`` means the CHARACTER's
 # left leg); bones use underscores. The mapping is explicit so a rename in one
@@ -79,6 +84,10 @@ PATH_ARMS: dict[str, tuple[str, str]] = {
 }
 
 PAGE_PADDING = 2
+
+CHAIN_SEGMENTS = 8
+"""Deform bones per path-driven limb. Equal lengths, like the official project
+(eight bones of 35.95 px), so the path constraint can use percent spacing."""
 
 SPINE_VERSION = "4.3.26"
 """Written into ``skeleton.spine``. Spine refuses to import a file whose version
@@ -285,6 +294,37 @@ def run(
             }
         )
 
+    # --- deform chains for path-driven limbs -------------------------------
+    # The path drives THIS chain and the skin is weighted to it, while the
+    # player-facing bones keep their IK and the path itself is skinned to those
+    # bones. That is the official architecture: dragging the IK target carries the
+    # curve along, and dragging the curve re-shapes it -- both compose instead of
+    # one overriding the other.
+    chain_specs: dict[str, dict[str, Any]] = {}
+    chain_bones_json: list[dict[str, Any]] = []
+    if leg_control == "path":
+        for side, (upper, lower) in PATH_LIMBS.items():
+            if upper not in joints or lower not in joints:
+                raise ValueError(f"leg_control='path' needs bones {upper}/{lower}")
+            polyline = [
+                (float(joints[upper]["base"][0]), canvas_h - float(joints[upper]["base"][1])),
+                (float(joints[upper]["tip"][0]), canvas_h - float(joints[upper]["tip"][1])),
+                (float(joints[lower]["tip"][0]), canvas_h - float(joints[lower]["tip"][1])),
+            ]
+            segments = subdivide(polyline, CHAIN_SEGMENTS)
+            names = [f"{upper}-d{index + 1}" for index in range(len(segments))]
+            chain_bones_json += chain_bones(
+                segments=segments,
+                names=names,
+                parent=upper,
+                parent_rotation=frames[upper][2],
+            )
+            chain_specs[side] = {"polyline": polyline, "names": names}
+        frames = bone_world_frames(rig["spine_bones"] + chain_bones_json)
+        bone_names = [bone["name"] for bone in rig["spine_bones"]] + [
+            bone["name"] for bone in chain_bones_json
+        ]
+
     # --- weighted-mesh limbs ------------------------------------------------
     for slot_name, (upper, lower, halves) in warped.items():
         absent = [half for half in halves if half not in by_name]
@@ -312,17 +352,31 @@ def run(
             joints[lower]["tip"],
         ]
         cols, rows = grid_for(crop.width, crop.height)
-        mesh = build_warp_mesh(
-            box=[left, top, right, bottom],
-            frames=frames,
-            bone_names=bone_names,
-            upper=upper,
-            lower=lower,
-            chain=[(float(p[0]), float(p[1])) for p in chain],
-            canvas_height=float(canvas_h),
-            cols=cols,
-            rows=rows,
-        )
+        side = {"leg-right": "r", "leg-left": "l"}.get(slot_name)
+        if side in chain_specs:
+            # Skin follows the deform chain, not the IK bones.
+            mesh = build_chain_mesh(
+                box=[left, top, right, bottom],
+                frames=frames,
+                bone_names=bone_names,
+                chain=chain_specs[side]["polyline"],
+                segments=chain_specs[side]["names"],
+                canvas_height=float(canvas_h),
+                cols=cols,
+                rows=rows,
+            )
+        else:
+            mesh = build_warp_mesh(
+                box=[left, top, right, bottom],
+                frames=frames,
+                bone_names=bone_names,
+                upper=upper,
+                lower=lower,
+                chain=[(float(p[0]), float(p[1])) for p in chain],
+                canvas_height=float(canvas_h),
+                cols=cols,
+                rows=rows,
+            )
         regions.append((slot_name, crop))
         placements.append(
             {
@@ -360,23 +414,51 @@ def run(
             (float(joints[lower]["tip"][0]), canvas_h - float(joints[lower]["tip"][1])),
         ]
         slot_name = f"{kind}-curve-{side}"
-        attachment = build_path_attachment(
-            chain=chain,
-            frame=frames["root"],
-            bone_index=bone_names.index("root"),
-        )
+
+        if kind == "leg" and side in chain_specs:
+            # Skin the CURVE to the player-facing bones: dragging the IK target then
+            # carries the curve with the leg, exactly like the official project
+            # (its path points are weighted to leg-up / leg-down).
+            upper_index = bone_names.index(upper)
+            lower_index = bone_names.index(lower)
+            # 9 points: hip + two thigh controls + knee, then two shin controls + ankle.
+            point_bones = [(upper_index, frames[upper])] * 5 + [
+                (lower_index, frames[lower])
+            ] * 4
+            attachment = build_path_attachment(
+                chain=chain,
+                frame=frames[upper],
+                bone_index=upper_index,
+                point_bones=point_bones,
+            )
+            path_constraints.append(
+                build_path_constraint_equal_chain(
+                    name=f"{kind}-path-{side}",
+                    slot=slot_name,
+                    bones=chain_specs[side]["names"],
+                )
+            )
+            slot_bone = upper
+        else:
+            attachment = build_path_attachment(
+                chain=chain,
+                frame=frames["root"],
+                bone_index=bone_names.index("root"),
+            )
+            path_constraints.append(
+                build_path_constraint(
+                    name=f"{kind}-path-{side}", slot=slot_name, bones=[upper, lower]
+                )
+            )
+            slot_bone = "root"
+
         placements.append(
             {
                 "slot": slot_name,
-                "bone": "root",
+                "bone": slot_bone,
                 "order": 0,  # drawn first; a path is never visible
                 "path": attachment,
             }
-        )
-        path_constraints.append(
-            build_path_constraint(
-                name=f"{kind}-path-{side}", slot=slot_name, bones=[upper, lower]
-            )
         )
 
     if mode == "images":
@@ -423,7 +505,7 @@ def run(
             "rotation": bone["rotation"],
             "length": bone["length"],
         }
-        for bone in rig["spine_bones"]
+        for bone in rig["spine_bones"] + chain_bones_json
     ]
 
     placements.sort(key=lambda entry: entry["order"])

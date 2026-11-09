@@ -59,6 +59,7 @@ def build_path_attachment(
     bone_index: int = 0,
     name: str | None = None,
     bulge: float = 0.0,
+    point_bones: Sequence[tuple[int, tuple[float, float, float]]] | None = None,
 ) -> dict[str, Any]:
     """Emit a two-curve path through ``chain`` (hip, knee, ankle) in Spine space.
 
@@ -107,12 +108,23 @@ def build_path_attachment(
     radians = math.radians(-rotation)
     cos, sin = math.cos(radians), math.sin(radians)
     local: list[float] = []
-    for x, y in points:
-        dx, dy = x - ox, y - oy
-        # Weighted vertex: one bone, weight 1 (same shape as the official export).
+    for position, (x, y) in enumerate(points):
+        # Weights let the curve be skinned to the limb bones, exactly like the
+        # official export: the path then MOVES with the IK and the constraint still
+        # drives the separate deform chain, so both controls work at once.
+        if point_bones is None:
+            index, point_frame = bone_index, frame
+            radians = math.radians(-rotation)
+            cos, sin = math.cos(radians), math.sin(radians)
+        else:
+            index, point_frame = point_bones[min(position, len(point_bones) - 1)]
+            radians = math.radians(-point_frame[2])
+            cos, sin = math.cos(radians), math.sin(radians)
+        bx, by = point_frame[0], point_frame[1]
+        dx, dy = x - bx, y - by
         local += [
             1.0,
-            float(bone_index),
+            float(index),
             round(dx * cos - dy * sin, 3),
             round(dx * sin + dy * cos, 3),
             1.0,
