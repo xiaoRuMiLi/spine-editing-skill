@@ -221,7 +221,16 @@ def build_warp_mesh(
         elif weight_lower >= 1.0:
             entries = [(lower, 1.0)]
         else:
-            entries = [(upper, round(1.0 - weight_lower, 4)), (lower, round(weight_lower, 4))]
+            # Round first: a weight that rounds to 0 or 1 is a rigid vertex, and
+            # leaving a 0.0 influence in would make the mesh claim two bones for
+            # a vertex that only follows one (and trips the blend-band checks).
+            rounded = round(weight_lower, 4)
+            if rounded <= 0.0:
+                entries = [(upper, 1.0)]
+            elif rounded >= 1.0:
+                entries = [(lower, 1.0)]
+            else:
+                entries = [(upper, round(1.0 - rounded, 4)), (lower, rounded)]
 
         vertices.append(float(len(entries)))
         for name, weight in entries:

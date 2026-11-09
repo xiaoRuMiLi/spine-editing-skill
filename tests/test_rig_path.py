@@ -100,8 +100,8 @@ def test_constraint_spaces_the_chain_along_the_curve():
 # --------------------------------------------------------------- integration
 
 
-def _build(tmp_path: Path, leg_control: str) -> dict:
-    out = tmp_path / leg_control
+def _build(tmp_path: Path, leg_control: str, arm_control: str = "ik") -> dict:
+    out = tmp_path / f"{leg_control}-{arm_control}"
     result = assemble.run(
         str(EXAMPLE / "parts.json"),
         str(EXAMPLE / "rig" / "bones.json"),
@@ -110,6 +110,7 @@ def _build(tmp_path: Path, leg_control: str) -> dict:
         mode="images",
         warp="legs",
         leg_control=leg_control,
+        arm_control=arm_control,
     )
     assert result["checked"] is True
     return json.loads((out / "girl.json").read_text(encoding="utf-8"))
@@ -137,8 +138,29 @@ def test_path_mode_replaces_the_leg_ik_instead_of_fighting_it(tmp_path):
 def test_ik_mode_has_no_paths_at_all(tmp_path):
     document = _build(tmp_path, "ik")
     assert not [c for c in document["constraints"] if c["type"] == "path"]
-    assert all(slot["name"].startswith("leg-") is False or "-curve-" not in slot["name"]
-               for slot in document["slots"])
+    assert all("-curve-" not in slot["name"] for slot in document["slots"])
+
+
+def test_arm_path_replaces_the_hand_ik_too(tmp_path):
+    """Arms are two bones as well: same path recipe, different chain."""
+    document = _build(tmp_path, "ik", "path")
+    driven = {bone for c in document["constraints"] if c["type"] == "path" for bone in c["bones"]}
+    assert driven == {"arm_r", "fore_r", "arm_l", "fore_l"}
+    for constraint in document["constraints"]:
+        if constraint["type"] == "ik":
+            assert not (set(constraint["bones"]) & driven)
+    names = {c.get("name") for c in document["constraints"]}
+    assert {"arm-path-r", "arm-path-l"} <= names
+    slots = {slot["name"] for slot in document["slots"]}
+    assert {"arm-curve-r", "arm-curve-l"} <= slots
+
+
+def test_both_limbs_can_be_path_driven_at_once(tmp_path):
+    document = _build(tmp_path, "path", "path")
+    driven = {bone for c in document["constraints"] if c["type"] == "path" for bone in c["bones"]}
+    assert driven == {"leg_r", "shin_r", "leg_l", "shin_l", "arm_r", "fore_r", "arm_l", "fore_l"}
+    # No IK may be left on any of those bones.
+    assert not [c for c in document["constraints"] if c["type"] == "ik"]
 
 
 def test_self_check_rejects_a_vertex_count_that_is_not_a_multiple_of_three(tmp_path):

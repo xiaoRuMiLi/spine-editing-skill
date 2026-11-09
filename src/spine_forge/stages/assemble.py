@@ -66,10 +66,15 @@ WARP_LIMBS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "leg-left": ("leg_l", "shin_l", ("leg-left-up", "leg-left-down")),
 }
 
-# Limb chains that can be driven by a draggable path instead of foot IK.
+# Limb chains that can be driven by a draggable path instead of IK.
 PATH_LIMBS: dict[str, tuple[str, str]] = {
     "r": ("leg_r", "shin_r"),
     "l": ("leg_l", "shin_l"),
+}
+
+PATH_ARMS: dict[str, tuple[str, str]] = {
+    "r": ("arm_r", "fore_r"),
+    "l": ("arm_l", "fore_l"),
 }
 
 PAGE_PADDING = 2
@@ -162,6 +167,7 @@ def run(
     mode: str = "atlas",
     warp: str = "none",
     leg_control: str = "ik",
+    arm_control: str = "ik",
 ) -> dict[str, Any]:
     """Write a Spine project.
 
@@ -180,6 +186,9 @@ def run(
     leg_control = (leg_control or "ik").lower()
     if leg_control not in ("ik", "path"):
         raise ValueError(f"unknown leg control: {leg_control!r}")
+    arm_control = (arm_control or "ik").lower()
+    if arm_control not in ("ik", "path"):
+        raise ValueError(f"unknown arm control: {arm_control!r}")
     parts_doc = _load(parts_path)
     rig = _load(bones_path)
 
@@ -304,31 +313,38 @@ def run(
 
     # --- draggable limb curves (path constraints) ---------------------------
     # A path moves BONES along a curve; the artwork still deforms through the
-    # weighted mesh. Two bosses cannot drive the same bones, so the foot IK is
-    # dropped for the legs whose bones the path takes over.
+    # weighted mesh. Two bosses cannot drive the same bones, so the IK of that
+    # limb is dropped when the path takes over.
     path_constraints: list[dict[str, Any]] = []
+    path_limbs = []
     if leg_control == "path":
-        for side, (upper, lower) in PATH_LIMBS.items():
-            if upper not in joints or lower not in joints:
-                raise ValueError(f"leg_control='path' needs bones {upper}/{lower}")
-            chain = [
-                (float(joints[upper]["base"][0]), canvas_h - float(joints[upper]["base"][1])),
-                (float(joints[upper]["tip"][0]), canvas_h - float(joints[upper]["tip"][1])),
-                (float(joints[lower]["tip"][0]), canvas_h - float(joints[lower]["tip"][1])),
-            ]
-            slot_name = f"leg-curve-{side}"
-            attachment = build_path_attachment(chain=chain, frame=frames["root"])
-            placements.append(
-                {
-                    "slot": slot_name,
-                    "bone": "root",
-                    "order": 0,  # drawn first; a path is never visible
-                    "path": attachment,
-                }
+        path_limbs += [("leg", side, chain) for side, chain in PATH_LIMBS.items()]
+    if arm_control == "path":
+        path_limbs += [("arm", side, chain) for side, chain in PATH_ARMS.items()]
+
+    for kind, side, (upper, lower) in path_limbs:
+        if upper not in joints or lower not in joints:
+            raise ValueError(f"{kind}_control='path' needs bones {upper}/{lower}")
+        chain = [
+            (float(joints[upper]["base"][0]), canvas_h - float(joints[upper]["base"][1])),
+            (float(joints[upper]["tip"][0]), canvas_h - float(joints[upper]["tip"][1])),
+            (float(joints[lower]["tip"][0]), canvas_h - float(joints[lower]["tip"][1])),
+        ]
+        slot_name = f"{kind}-curve-{side}"
+        attachment = build_path_attachment(chain=chain, frame=frames["root"])
+        placements.append(
+            {
+                "slot": slot_name,
+                "bone": "root",
+                "order": 0,  # drawn first; a path is never visible
+                "path": attachment,
+            }
+        )
+        path_constraints.append(
+            build_path_constraint(
+                name=f"{kind}-path-{side}", slot=slot_name, bones=[upper, lower]
             )
-            path_constraints.append(
-                build_path_constraint(name=f"leg-path-{side}", slot=slot_name, bones=[upper, lower])
-            )
+        )
 
     if mode == "images":
         # One file per part, named after the attachment. The skeleton then carries
@@ -439,6 +455,7 @@ def run(
         "mode": mode,
         "warp": warp,
         "leg_control": leg_control,
+        "arm_control": arm_control,
         "skeleton": skeleton_path,
         "slots": len(slots_json),
         "bones": len(bones_json),

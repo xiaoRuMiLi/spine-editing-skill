@@ -2,7 +2,7 @@
 
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const OUT = "C:\\Users\\Administrator\\.openclaw\\workspace-dev\\_tmp\\";
-const PAGES = ["path_rest", "path_bend", "path_kick"];
+const PAGES = ["region_rest", "region_bend", "warp_rest", "warp_bend", "path_rest", "path_bend"];
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -32,6 +32,9 @@ const PAGES = ["path_rest", "path_bend", "path_kick"];
   console.error("FAILED: " + e.message);
   process.exit(1);
 });
+
+
+
 
 
 

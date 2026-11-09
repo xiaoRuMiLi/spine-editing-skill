@@ -163,6 +163,14 @@ python -m spine_forge.cli assemble parts.json --bones rig/bones.json \
 - path **只搬骨**，图会不会弯还是 mesh 权重的事 —— 所以 path 必须配 `--warp legs`；
 - path 会**接管**这批骨，`--leg-control path` 会自动删掉那两条腿的 foot IK（同一批骨只能一个老板）。
 - **不需要加骨**：两节骨就能跟曲线（各自与曲线相切，膝由权重过渡）。
+- 手臂同理：`--arm-control path`（chain = 肩→肘→腕，自动删掉 hand IK）。腿、臂可以各自选：
+
+| 命令 | 腿 | 臂 |
+|---|---|---|
+| 默认 | IK 拖脚踝 | IK 拖手 |
+| `--leg-control path` | 拖曲线 | IK 拖手 |
+| `--arm-control path` | IK 拖脚踝 | 拖曲线 |
+| 两个都给 `path` | 拖曲线 | 拖曲线 |
 
 > 权重必须用**整条骨链的最近点**算，不能只投影到小腿轴线：贴图框的角离膝盖 80px，
 > 投影却会落进过渡带，被分给小腿 → 拖膝盖时大腿被拽成一块苍白的大弯月。

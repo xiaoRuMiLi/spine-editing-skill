@@ -76,6 +76,7 @@ def _cmd_assemble(args: argparse.Namespace) -> dict[str, Any]:
         mode=args.mode,
         warp=args.warp,
         leg_control=args.leg_control,
+        arm_control=args.arm_control,
     )
 
 
@@ -207,6 +208,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default="ik",
         help="ik = drag the foot target; path = drag a curve the leg follows "
         "(needs the leg bones, replaces their IK)",
+    )
+    p_assemble.add_argument(
+        "--arm-control",
+        choices=("ik", "path"),
+        default="ik",
+        help="same as --leg-control, for the arms (hand target vs. a curve)",
     )
     p_assemble.set_defaults(func=_cmd_assemble)
 

@@ -22,28 +22,28 @@
       "x": 0.0,
       "y": 0.0,
       "rotation": 90.83,
-      "length": 65.9
+      "length": 65.91
     },
     {
       "name": "chest",
       "parent": "hips",
-      "x": 65.9,
+      "x": 65.91,
       "y": 0.0,
-      "rotation": -22.74,
-      "length": 168.72
+      "rotation": -22.73,
+      "length": 168.71
     },
     {
       "name": "neck",
       "parent": "chest",
-      "x": 168.72,
-      "y": 0.0,
+      "x": 168.71,
+      "y": -0.0,
       "rotation": 26.21,
-      "length": 26.64
+      "length": 26.65
     },
     {
       "name": "head",
       "parent": "neck",
-      "x": 26.64,
+      "x": 26.65,
       "y": -0.0,
       "rotation": -4.58,
       "length": 128.57
@@ -68,7 +68,7 @@
       "name": "shoulder_r",
       "parent": "chest",
       "x": 129.52,
-      "y": 93.63,
+      "y": 93.64,
       "rotation": -68.09,
       "length": 0.0
     },
@@ -86,12 +86,12 @@
       "x": 122.33,
       "y": 0.0,
       "rotation": 9.4,
-      "length": 108.91
+      "length": 108.92
     },
     {
       "name": "hand_r",
       "parent": "fore_r",
-      "x": 108.91,
+      "x": 108.92,
       "y": 0.0,
       "rotation": 12.07,
       "length": 82.5
@@ -110,13 +110,13 @@
       "x": 0.0,
       "y": 0.0,
       "rotation": -83.09,
-      "length": 116.21
+      "length": 116.22
     },
     {
       "name": "fore_l",
       "parent": "arm_l",
-      "x": 116.21,
-      "y": 0.0,
+      "x": 116.22,
+      "y": -0.0,
       "rotation": 100.66,
       "length": 114.29
     },
@@ -131,17 +131,17 @@
     {
       "name": "leg_r",
       "parent": "hips",
-      "x": 2.15,
-      "y": 44.97,
-      "rotation": -181.52,
-      "length": 166.01
+      "x": -50.35,
+      "y": 45.73,
+      "rotation": -181.84,
+      "length": 113.52
     },
     {
       "name": "shin_r",
       "parent": "leg_r",
-      "x": 166.01,
-      "y": -0.0,
-      "rotation": -27.39,
+      "x": 113.52,
+      "y": 0.0,
+      "rotation": -27.07,
       "length": 151.88
     },
     {
@@ -150,22 +150,22 @@
       "x": 151.88,
       "y": 0.0,
       "rotation": 46.78,
-      "length": 77.14
+      "length": 77.13
     },
     {
       "name": "leg_l",
       "parent": "hips",
-      "x": -3.65,
-      "y": -45.03,
-      "rotation": -175.86,
-      "length": 166.62
+      "x": -51.64,
+      "y": -44.34,
+      "rotation": -173.86,
+      "length": 118.88
     },
     {
       "name": "shin_l",
       "parent": "leg_l",
-      "x": 166.62,
+      "x": 118.88,
       "y": 0.0,
-      "rotation": -12.48,
+      "rotation": -14.48,
       "length": 171.98
     },
     {
@@ -173,7 +173,7 @@
       "parent": "shin_l",
       "x": 171.98,
       "y": 0.0,
-      "rotation": 60.9,
+      "rotation": 60.89,
       "length": 87.28
     },
     {
@@ -282,9 +282,9 @@
       "attachments": {
         "leg-right-up": {
           "leg-right-up": {
-            "x": 161.832,
-            "y": 14.951,
-            "rotation": 90.69,
+            "x": 109.254,
+            "y": 14.927,
+            "rotation": 91.01,
             "width": 30,
             "height": 75
           }
@@ -309,9 +309,9 @@
         },
         "leg-left-up": {
           "leg-left-up": {
-            "x": 174.291,
-            "y": 7.364,
-            "rotation": 85.035,
+            "x": 126.797,
+            "y": 7.092,
+            "rotation": 83.033,
             "width": 23,
             "height": 126
           }

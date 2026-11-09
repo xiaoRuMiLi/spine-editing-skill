@@ -994,3 +994,38 @@ _最后更新：2026-11-09 · 自检 + 坑清单（201 绿）_
 **211 passed**（201 + 10）。
 
 _最后更新：2026-11-09 · 路径约束弯腿（211 绿）_
+
+## 二十、髋关节落到骨盆 + 手臂也接 path（用户："1,2 都做"）
+
+### ① 髋点 y=647 → 700
+
+- 改 `rig/joints.json`（`leg_r`/`leg_l` 的 base.y = 700），并用 `rig/skeleton.py` **重算**
+  `rig/bones.json` 的 `spine_bones`（只改关节表会让局部变换变陈旧 —— 这正是"台账失效"的典型）；
+- 静止姿势：与改前平均差 **0.044**（肉眼不可见），因为贴图摆位由关节决定，髋点只改"支点";
+- 重出全部产物：`dist`（分割基线）/ `dist-warp`（mesh + 腿 IK + 臂 path）/
+  `dist-path`（腿臂全 path）/ `spine-images` / `spine-images-warp` / `spine-images-path`；
+  临时对照 `dist-hip` 已删。
+
+### ② `--arm-control path`
+
+- `PATH_ARMS = {r: (arm_r, fore_r), l: (arm_l, fore_l)}`，链 = 肩→肘→腕；
+- 与腿完全同一套 recipe（同一个 `build_path_attachment` / `build_path_constraint`）；
+- path 接管后**自动删掉 hand IK**，两臂各自一个不可见槽（`arm-curve-r/l`）；
+- 腿、臂可独立选：`ik`（默认）或 `path`，四种组合都验过。
+
+### 顺手修掉一个测试抓到的边界 bug
+
+髋点一动，某个顶点的小腿权重正好落在 0.00005 → `round(...,4) == 0.0`，
+于是写出"两根骨、其中一根权重 0"的顶点。虽然渲染结果相同，但
+`0 < w < 1` 的过渡带断言挂了。改成**先四舍五入再决定单骨/双骨**，零权重影响不再写出。
+
+### 验证
+
+- `213 passed`（+2：臂 path 接管 hand IK、腿臂全 path 时无任何 IK 残留）；
+- 官方 runtime 渲染无页面错误；对比图重生：
+  - `examples/girl/compare-knee-warp.png`（分割撕裂 vs 整图蒙皮）
+  - `examples/girl/compare-control-ik-vs-path.png`（拖脚踝 vs 拖曲线，都是两节骨）
+- 静止姿势与分割版平均差 **0.086**（比上一版的 0.031 略大：图集打包顺序变了，
+  边缘抗锯齿差异分布到全身 1395 个像素，肉眼不可见）。
+
+_最后更新：2026-11-09 · 髋点入骨盆 + 手臂 path（213 绿）_
