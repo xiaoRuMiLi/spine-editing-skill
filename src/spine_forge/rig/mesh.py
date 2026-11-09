@@ -228,6 +228,17 @@ def build_warp_mesh(
             lx, ly = local_point(frames[name], world_x, world_y)
             vertices += [float(bone_index[name]), round(lx, 3), round(ly, 3), weight]
 
+    # Fail here rather than in a screenshot: a vertex whose weights do not sum to
+    # 1 sinks between its bones and the limb looks torn.
+    cursor = 0
+    while cursor < len(vertices):
+        count = int(vertices[cursor])
+        block = vertices[cursor + 1 : cursor + 1 + count * 4]
+        total = sum(block[i] for i in range(3, len(block), 4))
+        if abs(total - 1.0) > 1e-3:
+            raise ValueError(f"warp mesh vertex weights sum to {total:.4f}, not 1")
+        cursor += 1 + count * 4
+
     return {
         "type": "mesh",
         "width": round(width, 3),

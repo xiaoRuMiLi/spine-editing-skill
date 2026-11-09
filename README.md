@@ -122,6 +122,18 @@ python -m spine_forge.cli assemble parts.json --bones rig/bones.json \
 > 实测：部分 Spine 安装读不了本工具生成的图集，但散图模式能直接打开；
 > 遇到“图片渲染不出来”先用 `--mode images` 排除图集问题。
 
+#### 自检：`check`（结构错了当场报，不用等截图）
+
+```bash
+python -m spine_forge.cli check examples/girl/dist-warp/girl.json
+```
+
+查：骨/槽名重复与引用、mesh 的 uvs 是否图内 0..1、权重是否归一、骨索引/三角形索引越界、
+IK 目标是否存在。`assemble` 写完会自动跑一遍，不过直接报错。
+
+> 所有已经踩过的坑（权重、uv、hull、IK 符号、约束抢骨、坐标系）见
+> **[docs/spine-pitfalls.md](docs/spine-pitfalls.md)** —— 每条都写了“现象/根因/规则/谁在守”。
+
 #### 会弯的腿：`--warp legs`（整图蒙皮，不是切两半）
 
 ```bash
@@ -153,7 +165,7 @@ python -m spine_forge.cli assemble parts.json --bones rig/bones.json \
 
 ```
 src/spine_forge/
-├── core/          零依赖：数据模型 + Spine 4.2 序列化
+├── core/          零依赖：数据模型 + Spine 4.2 序列化 + verify（结构自检）
 ├── splitter/      拆图（可替换接口）—— alpha：连通域；colour：填色分族 + 文档 docs/parts-splitting.md
 ├── rig/           手标关节 → 骨架：markers（读圈）+ skeleton（局部变换）+ overlay（审阅图）
 │                  mesh（整图蒙皮：权重网格，膝盖弯曲用）

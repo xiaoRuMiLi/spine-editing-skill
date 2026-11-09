@@ -65,9 +65,10 @@ def _cmd_skeleton(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _cmd_assemble(args: argparse.Namespace) -> dict[str, Any]:
+    from .core.verify import check_document
     from .stages import assemble
 
-    return assemble.run(
+    result = assemble.run(
         args.parts,
         args.bones,
         args.out,
@@ -75,6 +76,25 @@ def _cmd_assemble(args: argparse.Namespace) -> dict[str, Any]:
         mode=args.mode,
         warp=args.warp,
     )
+    # A broken wire format never raises at runtime -- check it while the
+    # documents are still here, instead of discovering it in a screenshot.
+    with open(result["skeleton"], encoding="utf-8") as handle:
+        problems = check_document(json.load(handle))
+    if problems:
+        raise ValueError("skeleton failed self-check:\n  " + "\n  ".join(problems))
+    result["checked"] = True
+    return result
+
+
+def _cmd_check(args: argparse.Namespace) -> dict[str, Any]:
+    from .core.verify import check_document
+
+    with open(args.skeleton, encoding="utf-8") as handle:
+        document = json.load(handle)
+    problems = check_document(document)
+    if problems:
+        raise ValueError("problems:\n  " + "\n  ".join(problems))
+    return {"skeleton": args.skeleton, "problems": 0}
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -189,6 +209,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "image) instead of two rigid cut halves",
     )
     p_assemble.set_defaults(func=_cmd_assemble)
+
+    p_check = subs.add_parser(
+        "check",
+        parents=[common],
+        help="validate a built skeleton.json (mesh weights, uvs, indices, constraints)",
+    )
+    p_check.add_argument("skeleton", help="skeleton.json / girl.json to validate")
+    p_check.set_defaults(func=_cmd_check)
 
     return parser
 
