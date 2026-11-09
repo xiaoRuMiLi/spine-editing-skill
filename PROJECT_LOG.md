@@ -1052,3 +1052,38 @@ Spine **只比对 `skeleton.spine` 字符串**，4.3.x 补丁号不同也直接�
 **213 passed**。
 
 _最后更新：2026-11-09 · 版本号参数化（213 绿）_
+
+## 二十二、按官方 JSON 对齐格式：枚举大小写 / edges / path 权重顶点
+
+用户把 Spine 试用版下载的官方示例（`SpineTrial\examples\4.3\mix-and-match`）连同导出 JSON
+给了线索，我在 `_tmp\mix-and-match-4.3\export\mix-and-match-pro.json` 里逐字段对照，
+**一次定位三个真因**（之前都是运行时能跑、编辑器打不开）：
+
+| 我们 | 官方 | 后果 |
+|---|---|---|
+| `spacingMode: "Length"`, `rotateMode: "Chain"` | `"percent"` / `"chainScale"` | 编辑器 `Enum.valueOf` 逐字匹配 → `No enum constant ...Percent`，**整个文件拒绝导入** |
+| mesh 写 `edges`（轮郭环 2×hull） | `edges` 是三角剖分边界，索引可超过顶点数 | `Invalid mesh edge (1 must be even)` + 内部边丢失 |
+| path 顶点非权重 | path 顶点是**权重格式**（1 骨、权重 1） | 编辑器兼容性风险 |
+
+### 还要记住的两条
+
+1. **枚举大小写不统一**：`spacingMode` 全小写（length/percent/proportional），
+   `rotateMode` 是小驼峰（tangent/chain/**chainScale**）。`path.py` 现在做白名单校验，
+   写错就抛错，不再默默产出编辑器不认的文件。
+2. **百分比间距要求骨等长**：官方 8 节骨都是 35.95，所以 `spacing: 0.125`；
+   我们大腿 166 / 小腿 152，改百分比后膝点偏 7px（静止像素差 0.086 → 1.18），
+   已改回 `length` + `spacing: 0`。等长骨链的官方配方留在 `build_path_constraint_equal_chain()`。
+
+### 验证
+
+- 静止像素差回到 **0.086**（warp 与 path 两套），证实格式改了但形状没变；
+- 官方 runtime 六张图全部无页面错误；
+- `213 passed`（新增：path 顶点必须是权重格式、枚举白名单、等长骨链配方）。
+
+### 另外
+
+日志里那三个 `Unable to read image file`（foot-left/hair/head）发生在我**重建产物**的同一时段，
+文件现在校验完好（PNG 结构、chunk 全对），判定为“Spine 读到正在被覆盖的文件”。
+以后**重建时先别导入**。
+
+_最后更新：2026-11-09 · 官方格式对齐（213 绿）_

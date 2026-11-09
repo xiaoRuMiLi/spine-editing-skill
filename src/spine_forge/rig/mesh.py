@@ -117,14 +117,6 @@ def grid_topology(cols: int, rows: int) -> tuple[list[tuple[int, int]], dict[tup
     return order, index, hull, triangles
 
 
-def _hull_edges(hull: int) -> list[int]:
-    """Close the hull loop: [0,1, 1,2, ..., hull-1,0] as a flat index list."""
-    edges: list[int] = []
-    for i in range(hull):
-        edges += [i, (i + 1) % hull]
-    return edges
-
-
 def _chain_param(
     chain: Sequence[Point], x: float, y: float
 ) -> tuple[float, float, float]:
@@ -256,7 +248,9 @@ def build_warp_mesh(
         "triangles": triangles,
         "vertices": vertices,
         "hull": hull,
-        # The hull IS the mesh boundary here, so the outline is the hull loop.
-        # The runtime only uses this for debug drawing, but the editor wants it.
-        "edges": _hull_edges(hull),
+        # ``edges`` is deliberately NOT written. Spine's editor validates it much
+        # more strictly than the runtime ("Invalid mesh edge (1 must be even)" and
+        # then drops it), while the official export stores a triangulation-boundary
+        # list whose indices exceed the vertex count. Omitting it is valid in every
+        # version and the editor rebuilds what it needs.
     }

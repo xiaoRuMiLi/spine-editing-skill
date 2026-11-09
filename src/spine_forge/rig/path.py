@@ -15,7 +15,9 @@ spine-player 4.3, an OPEN path with two curves needs:
 * ``vertexCount = 9`` therefore: points 1..7 carry the geometry, point 8 is only
   there to keep the count a multiple of three;
 * ``lengths`` are CUMULATIVE per curve (``[l1, l1+l2]``), not per-segment;
-* vertices live in the slot bone's local space, like every other attachment.
+* vertices live in the slot bone's local space, like every other attachment, and
+  -- as the official export shows -- they are written in the WEIGHTED form
+  (``boneCount`` then ``boneIndex, x, y, weight``), one bone at weight 1.
 
 Verified: with the path drawn straight through hip/knee/ankle, the constraint puts
 the two bones exactly back on those joints (positions 100,300 / 100,180 / 60,60).
@@ -54,6 +56,7 @@ def build_path_attachment(
     *,
     chain: Sequence[Point],
     frame: tuple[float, float, float],
+    bone_index: int = 0,
     name: str | None = None,
     bulge: float = 0.0,
 ) -> dict[str, Any]:
@@ -106,7 +109,14 @@ def build_path_attachment(
     local: list[float] = []
     for x, y in points:
         dx, dy = x - ox, y - oy
-        local += [round(dx * cos - dy * sin, 3), round(dx * sin + dy * cos, 3)]
+        # Weighted vertex: one bone, weight 1 (same shape as the official export).
+        local += [
+            1.0,
+            float(bone_index),
+            round(dx * cos - dy * sin, 3),
+            round(dx * sin + dy * cos, 3),
+            1.0,
+        ]
 
     attachment: dict[str, Any] = {
         "type": "path",
@@ -131,29 +141,58 @@ def build_path_constraint(
     name: str,
     slot: str,
     bones: Sequence[str],
-    mix_rotate: float = 1.0,
+    spacing_mode: str = "length",
+    rotate_mode: str = "chain",
+    spacing: float = 0.0,
 ) -> dict[str, Any]:
     """Constraint dict that makes ``bones`` follow the path in ``slot``.
 
-    ``spacingMode: Length`` with ``spacing: 0`` means each bone starts where the
-    previous one ended -- i.e. the chain lies ON the curve with its real lengths.
-    Any other spacing would place the joints off the curve and the limb would
-    detach from its own skeleton.
+    Two things matter a lot here:
+
+    * **the enums are lowercase** (``length``, ``chain``, ``percent``,
+      ``chainScale``). ``"Chain"`` parses in the JS runtime but the Spine EDITOR
+      runs Enum.valueOf and refuses the whole file: ``No enum constant Percent``.
+    * **length spacing** (``spacing: 0``) puts each bone where the previous one
+      ended, which keeps the joints exactly on the curve. The official project
+      uses percent + chainScale because its eight deform bones are all the same
+      length; with a 166 px thigh and a 152 px shin, 50% of the path lands 7 px
+      away from the knee and the whole limb shifts.
     """
+    if len(bones) < 2:
+        raise ValueError("a path constraint needs at least two bones")
+    # Exact spellings from the official export: spacing modes are all lowercase
+    # (``length``, ``percent``, ``proportional``) but rotate modes are camelCase
+    # (``tangent``, ``chain``, ``chainScale``). Enum.valueOf is case-sensitive,
+    # so ``.lower()`` here would turn chainScale into an invalid constant.
+    for value, allowed in (
+        (spacing_mode, ("length", "percent", "proportional")),
+        (rotate_mode, ("tangent", "chain", "chainScale")),
+    ):
+        if value not in allowed:
+            raise ValueError(f"{value!r} is not one of {allowed}")
     return {
         "type": "path",
         "name": name,
         "slot": slot,
         "bones": list(bones),
-        "positionMode": "Percent",
-        "spacingMode": "Length",
-        "rotateMode": "Chain",
-        "position": 0.0,
-        "spacing": 0.0,
-        "mixRotate": mix_rotate,
-        "mixX": 1.0,
-        "mixY": 1.0,
+        "spacingMode": spacing_mode,
+        "rotateMode": rotate_mode,
+        "spacing": spacing,
     }
+
+
+def build_path_constraint_equal_chain(
+    *, name: str, slot: str, bones: Sequence[str]
+) -> dict[str, Any]:
+    """The official recipe: equal-length bones, each owning 1/N of the curve."""
+    return build_path_constraint(
+        name=name,
+        slot=slot,
+        bones=bones,
+        spacing_mode="percent",
+        rotate_mode="chainScale",
+        spacing=round(1.0 / len(bones), 4),
+    )
 
 
 def frame_of(frames: Mapping[str, tuple[float, float, float]], bone: str) -> tuple[float, float, float]:

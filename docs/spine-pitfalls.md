@@ -117,6 +117,31 @@ Spine 编辑器里叫 **Weights / Bind（绑定）**：在 Mesh 模式下用画�
   `core/verify.py` 的 `_check_path`（不可被 3 整除、长度数与点不匹配、长度不递增都报错）。
 - **实测**：路径沿髋膝踝画直时，约束把两根骨**精确放回** (100,300)/(100,180)/(60,60)。
 
+### 10.1.1【坑】枚举的大小写：运行时宽容、编辑器要命
+
+官方示例里 path 约束长这样（**照抄即可**）：
+
+```json
+{"type":"path","name":"leg-front","slot":"leg-front-path",
+ "bones":["leg-front-1","…","leg-front-8"],
+ "spacingMode":"percent","rotateMode":"chainScale","spacing":0.125}
+```
+
+- `spacingMode` 全小写：`length` / `percent` / `proportional`
+- `rotateMode` 是**小驼峰**：`tangent` / `chain` / `chainScale`
+- Spine 编辑器用 `Enum.valueOf` 逐字匹配；写 `"Percent"` 或把 `chainScale` 变成
+  `chainscale` 都会让**整个文件导入失败**（`No enum constant ...`）。JS 运行时不挑大小写，
+  所以本地能渲染、编辑器打不开——别拿运行时当验收。
+- 官方用 `percent + chainScale` 是因为那 8 节变形骨**等长**（每节 35.95）。我们大腿 166、
+  小腿 152，用 50% 间距膝点会偏 7px（静止像素差从 0.086 跳到 1.18）；等长骨链才用百分比，
+  否则用 `length` + `spacing: 0`。
+
+### 10.1.2【坑】mesh 的 `edges` 不要写
+
+- 官方导出里 `edges` 是**三角剖分边界**，索引会超过顶点数（49 顶点出现 96）；
+  我们按“轮廓环”(2×hull) 写，编辑器报 `Invalid mesh edge (1 must be even)` 后直接丢弃。
+- 该字段**可选**，不写最安全（编辑器自己会补）。`hull` + `triangles` + 权重才是必需的。
+
 ### 10.2 path 只搬骨，不会自己把图画弯
 
 - path 约束让骨骼沿曲线排（`spacingMode: Length` + `spacing: 0` = 后一节从前一节末尾接上，

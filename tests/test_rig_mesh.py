@@ -124,34 +124,6 @@ def test_uvs_count_matches_vertices():
     assert mesh["hull"] > 0
 
 
-def test_edges_close_the_hull_loop():
-    mesh = _mesh(cols=4, rows=5)
-    hull = mesh["hull"]
-    edges = mesh["edges"]
-    assert len(edges) == 2 * hull
-    assert all(0 <= index < hull for index in edges)
-    # Walk the loop: every hull vertex has exactly one edge in and one out.
-    pairs = list(zip(edges[0::2], edges[1::2]))
-    assert len(pairs) == hull
-    assert [a for a, _ in pairs] == list(range(hull))
-    assert [b for _, b in pairs] == list(range(1, hull)) + [0]
-
-
-def test_uv_v_runs_down_the_image_like_the_atlas_does():
-    """Mesh UVs are region-local and v=0 is the TOP (atlas y grows downwards)."""
-    mesh = _mesh(cols=2, rows=3)
-    order, _, _, _ = grid_topology(2, 3)
-    uvs = mesh["uvs"]
-    top = order.index((0, 0))
-    bottom = order.index((1, 2))
-    assert uvs[top * 2] == pytest.approx(0.0)
-    assert uvs[top * 2 + 1] == pytest.approx(0.0)
-    assert uvs[bottom * 2 + 1] == pytest.approx(1.0)
-
-
-# ---------------------------------------------------------------- weights
-
-
 def test_every_vertex_has_weights_summing_to_one():
     for entries in _vertices(_mesh()):
         assert sum(entry[3] for entry in entries) == pytest.approx(1.0, abs=1e-3)

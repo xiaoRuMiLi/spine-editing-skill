@@ -360,7 +360,11 @@ def run(
             (float(joints[lower]["tip"][0]), canvas_h - float(joints[lower]["tip"][1])),
         ]
         slot_name = f"{kind}-curve-{side}"
-        attachment = build_path_attachment(chain=chain, frame=frames["root"])
+        attachment = build_path_attachment(
+            chain=chain,
+            frame=frames["root"],
+            bone_index=bone_names.index("root"),
+        )
         placements.append(
             {
                 "slot": slot_name,

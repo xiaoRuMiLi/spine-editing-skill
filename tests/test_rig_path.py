@@ -17,6 +17,7 @@ from spine_forge.core.verify import check_document
 from spine_forge.rig.path import (
     build_path_attachment,
     build_path_constraint,
+    build_path_constraint_equal_chain,
     cubic_length,
 )
 from spine_forge.stages import assemble
@@ -32,8 +33,17 @@ def _path(**overrides):
 
 
 def _points(attachment):
+    """Decode the weighted path vertices into [(x, y)] in the slot bone's space."""
     flat = attachment["vertices"]
-    return [(flat[i], flat[i + 1]) for i in range(0, len(flat), 2)]
+    points = []
+    i = 0
+    while i < len(flat):
+        count = int(flat[i])
+        i += 1
+        # one bone here: boneIndex, x, y, weight
+        points.append((flat[i + 1], flat[i + 2]))
+        i += 4 * count
+    return points
 
 
 def test_vertex_count_is_nine_and_divisible_by_three():
@@ -41,8 +51,18 @@ def test_vertex_count_is_nine_and_divisible_by_three():
     attachment = _path()
     assert attachment["type"] == "path"
     assert attachment["vertexCount"] == 9
-    assert len(attachment["vertices"]) == 18
+    # Weighted vertices: 5 numbers per point (boneCount, bone, x, y, weight).
+    assert len(attachment["vertices"]) == 9 * 5
     assert len(attachment["lengths"]) == 3
+
+
+def test_path_vertices_are_weighted_to_one_bone():
+    """Spine's own export stores path points as weighted (1 bone, weight 1)."""
+    flat = _path(bone_index=7)["vertices"]
+    for i in range(0, len(flat), 5):
+        assert flat[i] == 1.0
+        assert flat[i + 1] == 7.0
+        assert flat[i + 4] == 1.0
 
 
 def test_point_zero_is_a_phantom_and_the_curve_starts_at_point_one():
@@ -84,17 +104,26 @@ def test_vertices_are_written_in_the_slot_bone_frame():
     assert (round(world_x, 3), round(world_y, 3)) == pytest.approx(CHAIN[1], abs=1e-3)
 
 
-def test_constraint_spaces_the_chain_along_the_curve():
+def test_constraint_uses_the_official_field_shape():
     constraint = build_path_constraint(name="leg-path-r", slot="curve", bones=["leg_r", "shin_r"])
     assert constraint["type"] == "path"
     assert constraint["slot"] == "curve"
     assert constraint["bones"] == ["leg_r", "shin_r"]
-    # Length spacing with 0 gap puts each bone where the previous one ended, which
-    # is what keeps the joints ON the curve.
-    assert constraint["spacingMode"] == "Length"
+    # Spine's editor does Enum.valueOf on these strings: TitleCase throws
+    # "No enum constant ...Percent" and the whole file is rejected.
+    assert constraint["spacingMode"] == "length"
+    assert constraint["rotateMode"] == "chain"
     assert constraint["spacing"] == 0.0
-    assert constraint["rotateMode"] == "Chain"
-    assert constraint["mixRotate"] == 1.0
+    assert "positionMode" not in constraint
+    assert "mixRotate" not in constraint
+
+
+def test_equal_chain_uses_percent_spacing_like_the_official_project():
+    """Only valid for equal-length bones -- see the docstring."""
+    constraint = build_path_constraint_equal_chain(name="p", slot="s", bones=["a", "b", "c", "d"])
+    assert constraint["spacingMode"] == "percent"
+    assert constraint["rotateMode"] == "chainScale"
+    assert constraint["spacing"] == pytest.approx(0.25)
 
 
 # --------------------------------------------------------------- integration

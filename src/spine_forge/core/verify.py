@@ -114,7 +114,7 @@ def _check_mesh(
     return problems
 
 
-def _check_path(name: str, attachment: Mapping[str, Any]) -> list[str]:
+def _check_path(name: str, attachment: Mapping[str, Any], bone_count: int) -> list[str]:
     """Path attachments: the count must be divisible by 3 or the loader throws."""
     problems: list[str] = []
     count = int(attachment.get("vertexCount") or 0)
@@ -129,7 +129,20 @@ def _check_path(name: str, attachment: Mapping[str, Any]) -> list[str]:
             "(the loader sizes lengths as vertexCount/3)"
         )
     if len(vertices) != count * 2:
-        problems.append(f"{name}: path has {len(vertices)} vertex values for {count} points")
+        # Weighted form (what Spine itself exports): boneCount + (bone, x, y, weight).
+        try:
+            decoded = _decode_vertices(list(vertices))
+        except ValueError as exc:
+            problems.append(f"{name}: {exc}")
+            return problems
+        if len(decoded) != count:
+            problems.append(f"{name}: path has {len(decoded)} points but vertexCount is {count}")
+        for index, entries in enumerate(decoded):
+            for bone_index, _, _, weight in entries:
+                if not 0 <= bone_index < bone_count:
+                    problems.append(f"{name}: point {index} references bone {bone_index}")
+                if weight < 0:
+                    problems.append(f"{name}: point {index} has negative weight {weight}")
     if count / 3 != len(lengths):
         problems.append(f"{name}: path has {len(lengths)} lengths, expected {count / 3:g}")
     if length_monotonic(lengths) is False:
@@ -188,7 +201,7 @@ def check_document(document: Mapping[str, Any]) -> list[str]:
                 if kind == "mesh":
                     problems += _check_mesh(name, attachment, len(bone_names))
                 elif kind == "path":
-                    problems += _check_path(name, attachment)
+                    problems += _check_path(name, attachment, len(bone_names))
                 elif kind in ("region", None):
                     if float(attachment.get("width") or 0) <= 0:
                         problems.append(f"{name}: region width must be positive")
