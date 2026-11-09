@@ -149,6 +149,21 @@ python -m spine_forge.cli assemble parts.json --bones rig/bones.json \
 （关节两侧各有约 10px 的过渡带）。
 弯膝＝整张图在关节处被**扭曲变形**，没有接缝、没有缺口（对比图右侧）。
 
+#### 用曲线弯腿：`--leg-control path`
+
+```bash
+python -m spine_forge.cli assemble parts.json --bones rig/bones.json \
+    --out examples/girl/dist-path --name girl --mode atlas \
+    --warp legs --leg-control path
+```
+
+`ik`（默认）＝拖脚踝的目标点抬腿；`path`＝髋膝踝上画一条**可拖的曲线**，两节骨沿曲线排，
+腿跟着弧线弯（官方示例那种手感）。两个细节：
+
+- path **只搬骨**，图会不会弯还是 mesh 权重的事 —— 所以 path 必须配 `--warp legs`；
+- path 会**接管**这批骨，`--leg-control path` 会自动删掉那两条腿的 foot IK（同一批骨只能一个老板）。
+- **不需要加骨**：两节骨就能跟曲线（各自与曲线相切，膝由权重过渡）。
+
 > 权重必须用**整条骨链的最近点**算，不能只投影到小腿轴线：贴图框的角离膝盖 80px，
 > 投影却会落进过渡带，被分给小腿 → 拖膝盖时大腿被拽成一块苍白的大弯月。
 

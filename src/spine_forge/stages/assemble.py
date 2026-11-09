@@ -36,7 +36,9 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from ..core.verify import check_document
 from ..rig.mesh import bone_world_frames, build_warp_mesh
+from ..rig.path import build_path_attachment, build_path_constraint
 
 # Part names come from the colour splitter (``leg-left`` means the CHARACTER's
 # left leg); bones use underscores. The mapping is explicit so a rename in one
@@ -62,6 +64,12 @@ PART_BINDING: dict[str, tuple[str, int]] = {
 WARP_LIMBS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "leg-right": ("leg_r", "shin_r", ("leg-right-up", "leg-right-down")),
     "leg-left": ("leg_l", "shin_l", ("leg-left-up", "leg-left-down")),
+}
+
+# Limb chains that can be driven by a draggable path instead of foot IK.
+PATH_LIMBS: dict[str, tuple[str, str]] = {
+    "r": ("leg_r", "shin_r"),
+    "l": ("leg_l", "shin_l"),
 }
 
 PAGE_PADDING = 2
@@ -153,6 +161,7 @@ def run(
     name: str | None = None,
     mode: str = "atlas",
     warp: str = "none",
+    leg_control: str = "ik",
 ) -> dict[str, Any]:
     """Write a Spine project.
 
@@ -168,6 +177,9 @@ def run(
     warp = (warp or "none").lower()
     if warp not in ("none", "legs"):
         raise ValueError(f"unknown warp mode: {warp!r}")
+    leg_control = (leg_control or "ik").lower()
+    if leg_control not in ("ik", "path"):
+        raise ValueError(f"unknown leg control: {leg_control!r}")
     parts_doc = _load(parts_path)
     rig = _load(bones_path)
 
@@ -290,6 +302,34 @@ def run(
     atlas_path: str | None = None
     page_size: list[int] = [0, 0]
 
+    # --- draggable limb curves (path constraints) ---------------------------
+    # A path moves BONES along a curve; the artwork still deforms through the
+    # weighted mesh. Two bosses cannot drive the same bones, so the foot IK is
+    # dropped for the legs whose bones the path takes over.
+    path_constraints: list[dict[str, Any]] = []
+    if leg_control == "path":
+        for side, (upper, lower) in PATH_LIMBS.items():
+            if upper not in joints or lower not in joints:
+                raise ValueError(f"leg_control='path' needs bones {upper}/{lower}")
+            chain = [
+                (float(joints[upper]["base"][0]), canvas_h - float(joints[upper]["base"][1])),
+                (float(joints[upper]["tip"][0]), canvas_h - float(joints[upper]["tip"][1])),
+                (float(joints[lower]["tip"][0]), canvas_h - float(joints[lower]["tip"][1])),
+            ]
+            slot_name = f"leg-curve-{side}"
+            attachment = build_path_attachment(chain=chain, frame=frames["root"])
+            placements.append(
+                {
+                    "slot": slot_name,
+                    "bone": "root",
+                    "order": 0,  # drawn first; a path is never visible
+                    "path": attachment,
+                }
+            )
+            path_constraints.append(
+                build_path_constraint(name=f"leg-path-{side}", slot=slot_name, bones=[upper, lower])
+            )
+
     if mode == "images":
         # One file per part, named after the attachment. The skeleton then carries
         # ``"images": "./images/"`` and needs no atlas at all.
@@ -345,6 +385,8 @@ def run(
             # Weighted meshes carry their own world placement in the vertex data,
             # so x/y/rotation stay out of the attachment.
             attachments[p["slot"]] = {p["slot"]: p["mesh"]}
+        elif "path" in p:
+            attachments[p["slot"]] = {p["slot"]: p["path"]}
         else:
             attachments[p["slot"]] = {
                 p["slot"]: {
@@ -355,6 +397,18 @@ def run(
                     "height": p["height"],
                 }
             }
+
+    constraints = list(rig.get("constraints", []))
+    if path_constraints:
+        taken = {bone for constraint in path_constraints for bone in constraint["bones"]}
+        # One boss per bone: an IK constraint on the same chain would be applied
+        # after (or before) the path and silently win or lose.
+        constraints = [
+            constraint
+            for constraint in constraints
+            if not (constraint.get("type") == "ik" and taken & set(constraint.get("bones") or []))
+        ]
+        constraints += path_constraints
 
     document = {
         "skeleton": {
@@ -369,20 +423,27 @@ def run(
         "bones": bones_json,
         "slots": slots_json,
         "skins": [{"name": "default", "attachments": attachments}],
-        "constraints": rig.get("constraints", []),
+        "constraints": constraints,
     }
 
     skeleton_path = os.path.join(out_dir, f"{skeleton_name}.json")
+    # A broken wire format never raises at runtime -- check it while the document
+    # is still here, instead of discovering it in a screenshot.
+    problems = check_document(document)
+    if problems:
+        raise ValueError("skeleton failed self-check:\n  " + "\n  ".join(problems))
     with open(skeleton_path, "w", encoding="utf-8") as handle:
         json.dump(document, handle, indent=2, ensure_ascii=False)
 
     result: dict[str, Any] = {
         "mode": mode,
         "warp": warp,
+        "leg_control": leg_control,
         "skeleton": skeleton_path,
         "slots": len(slots_json),
         "bones": len(bones_json),
         "constraints": len(document["constraints"]),
+        "checked": True,
     }
     if warp == "legs":
         result["meshes"] = {

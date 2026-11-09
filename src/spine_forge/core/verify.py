@@ -114,6 +114,38 @@ def _check_mesh(
     return problems
 
 
+def _check_path(name: str, attachment: Mapping[str, Any]) -> list[str]:
+    """Path attachments: the count must be divisible by 3 or the loader throws."""
+    problems: list[str] = []
+    count = int(attachment.get("vertexCount") or 0)
+    vertices = attachment.get("vertices") or []
+    lengths = attachment.get("lengths") or []
+    if count <= 0:
+        problems.append(f"{name}: path has no vertexCount")
+        return problems
+    if count % 3:
+        problems.append(
+            f"{name}: path vertexCount {count} is not divisible by 3 "
+            "(the loader sizes lengths as vertexCount/3)"
+        )
+    if len(vertices) != count * 2:
+        problems.append(f"{name}: path has {len(vertices)} vertex values for {count} points")
+    if count / 3 != len(lengths):
+        problems.append(f"{name}: path has {len(lengths)} lengths, expected {count / 3:g}")
+    if length_monotonic(lengths) is False:
+        problems.append(f"{name}: path lengths are not cumulative (must increase)")
+    return problems
+
+
+def length_monotonic(values: Iterable[float]) -> bool | None:
+    seen: list[float] = []
+    for value in values:
+        if seen and value < seen[-1] - 1e-6:
+            return False
+        seen.append(value)
+    return True
+
+
 def check_document(document: Mapping[str, Any]) -> list[str]:
     """Return every structural problem found; an empty list means it is drawable."""
     problems: list[str] = []
@@ -155,6 +187,8 @@ def check_document(document: Mapping[str, Any]) -> list[str]:
                 kind = attachment.get("type")
                 if kind == "mesh":
                     problems += _check_mesh(name, attachment, len(bone_names))
+                elif kind == "path":
+                    problems += _check_path(name, attachment)
                 elif kind in ("region", None):
                     if float(attachment.get("width") or 0) <= 0:
                         problems.append(f"{name}: region width must be positive")

@@ -65,25 +65,18 @@ def _cmd_skeleton(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _cmd_assemble(args: argparse.Namespace) -> dict[str, Any]:
-    from .core.verify import check_document
     from .stages import assemble
 
-    result = assemble.run(
+    # assemble self-checks the document before writing (see core/verify.py).
+    return assemble.run(
         args.parts,
         args.bones,
         args.out,
         name=args.name,
         mode=args.mode,
         warp=args.warp,
+        leg_control=args.leg_control,
     )
-    # A broken wire format never raises at runtime -- check it while the
-    # documents are still here, instead of discovering it in a screenshot.
-    with open(result["skeleton"], encoding="utf-8") as handle:
-        problems = check_document(json.load(handle))
-    if problems:
-        raise ValueError("skeleton failed self-check:\n  " + "\n  ".join(problems))
-    result["checked"] = True
-    return result
 
 
 def _cmd_check(args: argparse.Namespace) -> dict[str, Any]:
@@ -207,6 +200,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default="none",
         help="legs = one weighted mesh per leg (bends at the knee by warping one "
         "image) instead of two rigid cut halves",
+    )
+    p_assemble.add_argument(
+        "--leg-control",
+        choices=("ik", "path"),
+        default="ik",
+        help="ik = drag the foot target; path = drag a curve the leg follows "
+        "(needs the leg bones, replaces their IK)",
     )
     p_assemble.set_defaults(func=_cmd_assemble)
 

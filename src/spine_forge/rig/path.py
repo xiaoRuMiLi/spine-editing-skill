@@ -1,0 +1,162 @@
+"""Path attachments: one draggable curve that the limb's bones follow.
+
+A path constraint moves BONES along a curve; it does not deform artwork by itself.
+Paired with a weighted mesh (``rig/mesh.py``) that is the official recipe for a
+limb you can bend by dragging a curve instead of a single target point.
+
+The wire format is not documented anywhere I could find, and every wrong guess
+fails loudly but cryptically ("Invalid array length"). Measured against
+spine-player 4.3, an OPEN path with two curves needs:
+
+* ``vertexCount`` divisible by 3 -- the loader does ``newArray(vertexCount / 3)``
+  for ``lengths`` and a fractional length throws;
+* **point 0 is a phantom**: the first curve starts at point 1. Curve ``k`` reads
+  points ``3k+1 .. 3k+4``, so two curves need points 1..7;
+* ``vertexCount = 9`` therefore: points 1..7 carry the geometry, point 8 is only
+  there to keep the count a multiple of three;
+* ``lengths`` are CUMULATIVE per curve (``[l1, l1+l2]``), not per-segment;
+* vertices live in the slot bone's local space, like every other attachment.
+
+Verified: with the path drawn straight through hip/knee/ankle, the constraint puts
+the two bones exactly back on those joints (positions 100,300 / 100,180 / 60,60).
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Any, Mapping, Sequence
+
+Point = tuple[float, float]
+
+THIRD = 1.0 / 3.0
+TWO_THIRDS = 2.0 / 3.0
+
+
+def cubic_length(p0: Point, c1: Point, c2: Point, p1: Point, steps: int = 64) -> float:
+    """Arc length of one cubic Bezier, sampled (Spine does the same numerically)."""
+    total = 0.0
+    previous = p0
+    for i in range(1, steps + 1):
+        t = i / steps
+        u = 1.0 - t
+        x = u**3 * p0[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t**3 * p1[0]
+        y = u**3 * p0[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t**3 * p1[1]
+        total += math.hypot(x - previous[0], y - previous[1])
+        previous = (x, y)
+    return total
+
+
+def _lerp(a: Point, b: Point, t: float) -> Point:
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+
+def build_path_attachment(
+    *,
+    chain: Sequence[Point],
+    frame: tuple[float, float, float],
+    name: str | None = None,
+    bulge: float = 0.0,
+) -> dict[str, Any]:
+    """Emit a two-curve path through ``chain`` (hip, knee, ankle) in Spine space.
+
+    ``bulge`` pushes the two control points perpendicular to the limb; 0 keeps the
+    path exactly on the bone polyline, which is what the rest pose needs.
+    """
+    if len(chain) != 3:
+        raise ValueError("a limb path needs three points: hip, knee, ankle")
+    hip = (float(chain[0][0]), float(chain[0][1]))
+    knee = (float(chain[1][0]), float(chain[1][1]))
+    ankle = (float(chain[2][0]), float(chain[2][1]))
+
+    def control(a: Point, b: Point) -> tuple[Point, Point]:
+        first = _lerp(a, b, THIRD)
+        second = _lerp(a, b, TWO_THIRDS)
+        if bulge:
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length = math.hypot(dx, dy) or 1.0
+            # Perpendicular, scaled by the bulge, peaking in the middle.
+            nx, ny = -dy / length, dx / length
+            first = (first[0] + nx * bulge * 0.5, first[1] + ny * bulge * 0.5)
+            second = (second[0] + nx * bulge * 0.5, second[1] + ny * bulge * 0.5)
+        return first, second
+
+    thigh_c1, thigh_c2 = control(hip, knee)
+    shin_c1, shin_c2 = control(knee, ankle)
+
+    # 9 points: phantom 0, then the two curves' 7 points, then a phantom tail.
+    points = [
+        hip,          # 0 phantom
+        hip,          # 1 curve 0 starts here
+        thigh_c1,     # 2
+        thigh_c2,     # 3
+        knee,         # 4 shared
+        shin_c1,      # 5
+        shin_c2,      # 6
+        ankle,        # 7 curve 1 ends here
+        ankle,        # 8 phantom
+    ]
+
+    first_length = cubic_length(points[1], points[2], points[3], points[4])
+    second_length = cubic_length(points[4], points[5], points[6], points[7])
+    total = first_length + second_length
+
+    ox, oy, rotation = frame
+    radians = math.radians(-rotation)
+    cos, sin = math.cos(radians), math.sin(radians)
+    local: list[float] = []
+    for x, y in points:
+        dx, dy = x - ox, y - oy
+        local += [round(dx * cos - dy * sin, 3), round(dx * sin + dy * cos, 3)]
+
+    attachment: dict[str, Any] = {
+        "type": "path",
+        "closed": False,
+        "constantSpeed": True,
+        "vertexCount": 9,
+        "vertices": local,
+        # Cumulative per curve; the third slot keeps newArray(vertexCount/3) happy.
+        "lengths": [
+            round(first_length, 3),
+            round(total, 3),
+            round(total, 3),
+        ],
+    }
+    if name:
+        attachment["name"] = name
+    return attachment
+
+
+def build_path_constraint(
+    *,
+    name: str,
+    slot: str,
+    bones: Sequence[str],
+    mix_rotate: float = 1.0,
+) -> dict[str, Any]:
+    """Constraint dict that makes ``bones`` follow the path in ``slot``.
+
+    ``spacingMode: Length`` with ``spacing: 0`` means each bone starts where the
+    previous one ended -- i.e. the chain lies ON the curve with its real lengths.
+    Any other spacing would place the joints off the curve and the limb would
+    detach from its own skeleton.
+    """
+    return {
+        "type": "path",
+        "name": name,
+        "slot": slot,
+        "bones": list(bones),
+        "positionMode": "Percent",
+        "spacingMode": "Length",
+        "rotateMode": "Chain",
+        "position": 0.0,
+        "spacing": 0.0,
+        "mixRotate": mix_rotate,
+        "mixX": 1.0,
+        "mixY": 1.0,
+    }
+
+
+def frame_of(frames: Mapping[str, tuple[float, float, float]], bone: str) -> tuple[float, float, float]:
+    if bone not in frames:
+        raise ValueError(f"path attachment references unknown bone {bone!r}")
+    return frames[bone]

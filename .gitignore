@@ -1,4 +1,4 @@
-__pycache__/
+﻿__pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
@@ -13,6 +13,7 @@ out/
 dist-out/
 preview*.html
 viewer/_preview_*.html
+viewer/_calib*
 
 # …but the girl example's built project IS part of the deliverable (before/after baseline)
 !examples/girl/dist/
@@ -37,3 +38,4 @@ examples/owl/skins/
 # python
 *.orig
 *.rej
+

@@ -945,3 +945,52 @@ IK `bendPositive` 符号推导、拖膝无效、约束抢骨的先后顺序、�
 **201 passed**（193 + 8）。
 
 _最后更新：2026-11-09 · 自检 + 坑清单（201 绿）_
+
+## 十九、路径约束弯腿（`--leg-control path`）—— 两节骨就够
+
+用户纠正了我上一节的判断：**官方腿骨也只有髋/膝/踝三个关节，没有细分**。对。我上一节写的
+"要弧线必须细分 3~5 节"是错的，已在下面更正。
+
+### 结论：path 只搬骨，弧线来自"骨沿曲线排"
+
+- path 约束把骨骼按 `spacingMode: Length` + `spacing: 0` 排在曲线上（后一节从前一节末尾接上）；
+- 两节骨各自与曲线**相切**，膝盖处再由 mesh 权重过渡 → 视觉上就是弧线；
+- **不需要加骨**。加骨只会让弧更圆，不是必要条件。
+
+### 格式是实测出来的（官方文档查不到）
+
+对着 spine-player 4.3 的加载器逐条试，踩了 3 个坑，全部写进 `docs/spine-pitfalls.md §10.1`：
+
+1. `vertexCount` **必须被 3 整除** —— 加载器 `newArray(vertexCount/3)` 算 lengths，7 点/8 点直接
+   `Invalid array length`；
+2. **点 0 是占位**，第一条曲线从点 1 开始；曲线 k 读点 `3k+1..3k+4`；两条曲线 = 9 点（0 占位、
+   1..7 几何、8 补数）；
+3. `lengths` 是**累积长度**，不是逐段。
+
+校验手段：`_tmp/path_calib.*` 里把约束喂给运行时，直接读 `constraint.positions` —— 路径沿
+髋膝踝画直时，两节骨**精确回到** (100,300)/(100,180)/(60,60)，误差 0。
+
+### 实现
+
+- `rig/path.py`：`build_path_attachment`（3 点链 → 2 段三次贝塞尔、9 点布局、累积 lengths、
+  写进 slot 骨局部系）、`build_path_constraint`（Percent/Length/Chain）；
+- `stages/assemble.py`：`--leg-control ik|path`；path 模式加两个不可见槽（order 0）+ 两条约束，
+  并**自动删掉被接管那两条腿的 foot IK**（同一批骨只能一个老板）；
+- `core/verify.py` 新增 `_check_path`（3 的倍数、点/长度数匹配、长度递增）；
+- `cli.py`：`--leg-control`；自检从 CLI 移到 `assemble.run` 里（谁调用都过一遍）。
+
+### 验证
+
+- 静止姿势 vs 分割版：平均像素差 **0.033**（IK 版 0.031，差值来自路径重采样）→ 摆位没变；
+- 拖控制点（模拟在编辑器里拖曲线）：`examples/girl/dist-path/curve_bend.json` /
+  `curve_kick.json`，官方 runtime 渲染腿弯成弧、鞋跟着走、无撕裂；
+- 对比图 `examples/girl/compare-control-ik-vs-path.png`（左 IK 拖脚踝 / 右 拖曲线，都是两节骨）。
+
+### 测试
+
+`tests/test_rig_path.py` 10 条：9 点/占位点/点 1·4·7 = 髂膝踝/累积长度/直线弧长/局部系回推/
+约束字段；集成：path 模式删 foot IK 且保留 hand IK、两个 path 槽、自检拒绝 7 点。
+
+**211 passed**（201 + 10）。
+
+_最后更新：2026-11-09 · 路径约束弯腿（211 绿）_
