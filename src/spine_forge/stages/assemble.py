@@ -28,6 +28,7 @@ the texture rather than by swinging two rigid pieces. See ``rig/mesh.py``.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -79,6 +80,11 @@ PATH_ARMS: dict[str, tuple[str, str]] = {
 
 PAGE_PADDING = 2
 
+SPINE_VERSION = "4.3.26"
+"""Written into ``skeleton.spine``. Spine refuses to import a file whose version
+string differs from the editor's AT ALL (4.3.75 vs 4.3.26 is a hard error), even
+though the 4.3.x wire format is the same. Override with ``--spine-version``."""
+
 
 def _load(path: str) -> Any:
     with open(path, encoding="utf-8") as handle:
@@ -92,6 +98,28 @@ def _bone_world(joint: dict[str, Any]) -> tuple[float, float, float]:
     tx = float(joint["tip"][0])
     ty = float(joint["tip"][1])
     return bx, by, math.degrees(math.atan2(-(ty - by), tx - bx))
+
+
+def _document_hash(bones: list, slots: list, attachments: dict, path_slots: dict) -> str:
+    """Content hash shaped like Spine's own (20 hex chars).
+
+    A constant hash would make a re-import look unchanged to the editor, so this
+    is derived from the actual bone/slot/attachment names and shapes.
+    """
+    payload = {
+        "bones": [[bone["name"], bone.get("parent")] for bone in bones],
+        "slots": [[slot["name"], slot["bone"], slot["attachment"]] for slot in slots],
+        "attachments": {
+            slot: {
+                name: [attachment.get("type"), attachment.get("width"), attachment.get("height")]
+                for name, attachment in slot_map.items()
+            }
+            for slot, slot_map in attachments.items()
+        },
+        "paths": sorted(path_slots),
+    }
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.md5(blob).hexdigest()[:20]
 
 
 def _pack(regions: list[tuple[str, Image.Image]], width_hint: int):
@@ -168,6 +196,7 @@ def run(
     warp: str = "none",
     leg_control: str = "ik",
     arm_control: str = "ik",
+    spine_version: str = SPINE_VERSION,
 ) -> dict[str, Any]:
     """Write a Spine project.
 
@@ -428,8 +457,13 @@ def run(
 
     document = {
         "skeleton": {
-            "hash": "girl-draft",
-            "spine": "4.3.75",
+            "hash": _document_hash(
+                bones_json,
+                slots_json,
+                attachments,
+                {p["slot"] for p in placements if "path" in p},
+            ),
+            "spine": spine_version,
             "x": -canvas_w / 2.0,
             "y": 0,
             "width": canvas_w,

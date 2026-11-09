@@ -172,6 +172,11 @@ python -m spine_forge.cli assemble parts.json --bones rig/bones.json \
 | `--arm-control path` | IK 拖脚踝 | 拖曲线 |
 | 两个都给 `path` | 拖曲线 | 拖曲线 |
 
+> **导入 Spine 编辑器**：Spine 只比对版本字符串，差一个补丁号也会报“版本必须相同”。
+> 本仓库产物的 `skeleton.spine` 默认写 `4.3.26`；你的 Spine 是别的版本就用
+> `--spine-version 4.3.xx` 重出。另外 `mode=images` 的 `girl.json` 必须和 `images/` 同级
+> （文件里写的是 `"images": "./images/"`），别只拷 json。
+
 > 权重必须用**整条骨链的最近点**算，不能只投影到小腿轴线：贴图框的角离膝盖 80px，
 > 投影却会落进过渡带，被分给小腿 → 拖膝盖时大腿被拽成一块苍白的大弯月。
 

@@ -77,6 +77,7 @@ def _cmd_assemble(args: argparse.Namespace) -> dict[str, Any]:
         warp=args.warp,
         leg_control=args.leg_control,
         arm_control=args.arm_control,
+        spine_version=args.spine_version,
     )
 
 
@@ -214,6 +215,12 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("ik", "path"),
         default="ik",
         help="same as --leg-control, for the arms (hand target vs. a curve)",
+    )
+    p_assemble.add_argument(
+        "--spine-version",
+        default="4.3.26",
+        help="value for skeleton.spine; Spine rejects a file whose version string "
+        "differs from the editor's at all (default: 4.3.26)",
     )
     p_assemble.set_defaults(func=_cmd_assemble)
 
